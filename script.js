@@ -368,8 +368,33 @@ document.getElementById('show-staff-login')?.addEventListener('click', () => {
     loginStaffPanel.classList.remove('hidden');
 });
 
-// --- LOGIN STAFF (nickname / login + password) ---
-let staffLoginInProgress = false;
+// --- LOGIN STAFF (nickname / login + password, SENZA auth anonima) ---
+function applyStaffSession(session, employeeData) {
+    staffSession = session;
+    currentEmployeeId = session.id;
+    currentEmployeeData = employeeData || null;
+    userRole = 'dipendente';
+    sessionStorage.setItem('fenici_staff_session', JSON.stringify(session));
+    setupUIForRole();
+    initDatabaseListeners();
+    loginPage.classList.add('hidden');
+    mainDashboard.classList.remove('hidden');
+}
+
+function tryRestoreStaffSession() {
+    if (userRole === 'gestore') return false;
+    const saved = sessionStorage.getItem('fenici_staff_session');
+    if (!saved) return false;
+    try {
+        const session = JSON.parse(saved);
+        if (!session || !session.id) return false;
+        applyStaffSession(session, null);
+        return true;
+    } catch (_) {
+        sessionStorage.removeItem('fenici_staff_session');
+        return false;
+    }
+}
 
 loginStaffForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -388,24 +413,8 @@ loginStaffForm?.addEventListener('submit', async (e) => {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Accesso...';
     }
 
-    staffLoginInProgress = true;
-
     try {
-        // Auth anonima necessaria per leggere Firestore
-        if (!auth.currentUser) {
-            try {
-                await auth.signInAnonymously();
-            } catch (authErr) {
-                const msg = (authErr && authErr.code === 'auth/admin-restricted-operation')
-                    ? "Auth anonima non attiva in Firebase. Attivala in Authentication → Sign-in method → Anonymous."
-                    : ("Auth fallita: " + (authErr.message || authErr));
-                showToast(msg, "error");
-                staffLoginInProgress = false;
-                if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
-                return;
-            }
-        }
-
+        // Nessuna Auth Firebase: lettura diretta employees (regole: allow read pubblici)
         const snap = await db.collection('employees').get();
         const nickLower = nick.toLowerCase();
         let found = null;
@@ -415,7 +424,6 @@ loginStaffForm?.addEventListener('submit', async (e) => {
             const d = doc.data();
             const loginMatch = (d.login || '').trim().toLowerCase() === nickLower;
             const nameMatch = (d.name || '').trim().toLowerCase() === nickLower;
-            // password confronto esatto (come salvata)
             if ((loginMatch || nameMatch) && String(d.password) === String(password)) {
                 found = d;
                 foundId = doc.id;
@@ -423,37 +431,27 @@ loginStaffForm?.addEventListener('submit', async (e) => {
         });
 
         if (!found) {
-            staffLoginInProgress = false;
-            await auth.signOut();
             showToast("Nickname o password non validi.", "error");
             if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
             return;
         }
 
-        staffSession = {
+        applyStaffSession({
             id: foundId,
             name: found.name,
             login: found.login || found.name,
             roles: found.roles || { salesYJ: true, salesFen: false, invYJ: true, invFen: false },
             customPercentage: found.customPercentage || 40
-        };
-        currentEmployeeId = foundId;
-        currentEmployeeData = found;
-        userRole = 'dipendente';
-        sessionStorage.setItem('fenici_staff_session', JSON.stringify(staffSession));
+        }, found);
 
         showToast(`Benvenuto, ${found.name}!`, "success");
-        setupUIForRole();
-        initDatabaseListeners();
-        loginPage.classList.add('hidden');
-        mainDashboard.classList.remove('hidden');
-        staffLoginInProgress = false;
         if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
     } catch (err) {
-        staffLoginInProgress = false;
         console.error('Login staff error:', err);
-        showToast("Errore di accesso: " + (err.message || err), "error");
-        try { await auth.signOut(); } catch (_) {}
+        const msg = (err && String(err.code || err.message || '').includes('permission'))
+            ? "Permesso negato su employees. Aggiorna le regole Firestore (read pubblico su employees)."
+            : ("Errore di accesso: " + (err.message || err));
+        showToast(msg, "error");
         if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
     }
 });
@@ -482,55 +480,57 @@ loginGestoreForm?.addEventListener('submit', (e) => {
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
-        // Se è autenticazione email del gestore
+        // Solo gestore usa Firebase Auth (email)
         if (user.email === 'yellow.gestore@horde.it') {
             userRole = 'gestore';
             staffSession = null;
             currentEmployeeId = null;
+            currentEmployeeData = null;
             sessionStorage.removeItem('fenici_staff_session');
             setupUIForRole();
             initDatabaseListeners();
             loginPage.classList.add('hidden');
             mainDashboard.classList.remove('hidden');
         } else if (user.isAnonymous) {
-            // Durante il login staff lasciamo gestire il form
-            if (staffLoginInProgress) return;
-            const saved = sessionStorage.getItem('fenici_staff_session');
-            if (saved) {
-                try {
-                    staffSession = JSON.parse(saved);
-                    currentEmployeeId = staffSession.id;
-                    userRole = 'dipendente';
-                    setupUIForRole();
-                    initDatabaseListeners();
-                    loginPage.classList.add('hidden');
-                    mainDashboard.classList.remove('hidden');
-                } catch (_) {
-                    auth.signOut();
-                }
-            }
-            // altrimenti resta sulla login (anonimo senza sessione staff)
+            // Non usiamo più auth anonima: esci e lascia il login staff senza Auth
+            auth.signOut().catch(() => {});
         } else {
-            // altro account non autorizzato
             auth.signOut();
             showToast("Accesso non autorizzato.", "error");
         }
     } else {
         currentUser = null;
-        userRole = null;
-        staffSession = null;
-        currentEmployeeId = null;
-        sessionStorage.removeItem('fenici_staff_session');
-        loginPage.classList.remove('hidden');
-        mainDashboard.classList.add('hidden');
+        // Staff non ha Firebase Auth: ripristina sessione locale se presente
+        if (tryRestoreStaffSession()) {
+            return;
+        }
+        // Nessun gestore e nessuno staff → schermata login
+        if (userRole !== 'dipendente') {
+            userRole = null;
+            staffSession = null;
+            currentEmployeeId = null;
+            currentEmployeeData = null;
+            loginPage.classList.remove('hidden');
+            mainDashboard.classList.add('hidden');
+        }
     }
 });
 
 logoutBtn.addEventListener('click', () => {
     sessionStorage.removeItem('fenici_staff_session');
     staffSession = null;
-    auth.signOut().then(() => window.location.reload());
+    currentEmployeeId = null;
+    currentEmployeeData = null;
+    userRole = null;
+    if (auth.currentUser) {
+        auth.signOut().then(() => window.location.reload());
+    } else {
+        window.location.reload();
+    }
 });
+
+// Ripristino staff al caricamento (prima che Auth risponda)
+tryRestoreStaffSession();
 
 function setupUIForRole() {
     const isGestore = userRole === 'gestore';
@@ -562,6 +562,10 @@ function setupUIForRole() {
     const adminFen = document.getElementById('admin-inventory-fen-controls');
     if (adminYj) adminYj.classList.toggle('hidden', !isGestore);
     if (adminFen) adminFen.classList.toggle('hidden', !isGestore);
+
+    // Staff: inventario centrato (niente colonna admin)
+    if (inventoryYjSection) inventoryYjSection.classList.toggle('staff-centered', !isGestore);
+    if (inventoryFenSection) inventoryFenSection.classList.toggle('staff-centered', !isGestore);
 
     // Archivio storico solo gestore
     document.getElementById('manager-sales-archive-yj-section')?.classList.toggle('hidden', !isGestore);

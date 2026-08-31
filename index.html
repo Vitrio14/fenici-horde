@@ -321,8 +321,8 @@
 
             <!-- ========== SEZIONE INVENTARIO YELLOW JACK ========== -->
             <section id="inventory-yj-section" class="hidden space-y-6">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="space-y-6 xl:col-span-1">
+                <div class="inv-layout-grid grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="inv-admin-col space-y-6 xl:col-span-1">
                         <div id="admin-inventory-yj-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
                                 <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito YJ (Gestore)
@@ -356,20 +356,20 @@
                         </div>
                     </div>
 
-                    <div class="space-y-6 xl:col-span-2">
+                    <div class="inv-content-col space-y-6 xl:col-span-2">
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
                                     <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi Yellow Jack
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                    <input type="text" id="inv-yj-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
+                                    <input type="text" id="inv-yj-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-48">
                                     <select id="inv-yj-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500"><option value="all">Tutti i Depositi</option></select>
                                 </div>
                             </div>
                             <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
-                            <div class="max-h-[300px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-2 bg-gray-900/50">
-                                <div id="inventory-yj-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            <div class="inv-giacenza-scroll max-h-[min(65vh,640px)] min-h-[320px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-3 bg-gray-900/50">
+                                <div id="inventory-yj-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                 </div>
                             </div>
                         </div>
@@ -378,7 +378,7 @@
                             <h2 class="text-lg font-bold text-gray-300 mb-4 flex items-center">
                                 <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti YJ
                             </h2>
-                            <div class="overflow-x-auto max-h-[200px] overflow-y-auto border border-gray-700 rounded-xl">
+                            <div class="overflow-x-auto inv-logs-scroll max-h-[min(40vh,380px)] min-h-[180px] overflow-y-auto border border-gray-700 rounded-xl">
                                 <table class="w-full text-left text-sm border-collapse">
                                     <thead>
                                         <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">
@@ -400,8 +400,8 @@
 
             <!-- ========== SEZIONE INVENTARIO FENICI ========== -->
             <section id="inventory-fen-section" class="hidden space-y-6">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="space-y-6 xl:col-span-1">
+                <div class="inv-layout-grid grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="inv-admin-col space-y-6 xl:col-span-1">
                         <div id="admin-inventory-fen-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
                                 <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito Fenici (Gestore)
@@ -435,20 +435,20 @@
                         </div>
                     </div>
 
-                    <div class="space-y-6 xl:col-span-2">
+                    <div class="inv-content-col space-y-6 xl:col-span-2">
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
                                     <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi Fenici
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                    <input type="text" id="inv-fen-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
+                                    <input type="text" id="inv-fen-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-48">
                                     <select id="inv-fen-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500"><option value="all">Tutti i Depositi</option></select>
                                 </div>
                             </div>
                             <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
-                            <div class="max-h-[300px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-2 bg-gray-900/50">
-                                <div id="inventory-fen-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            <div class="inv-giacenza-scroll max-h-[min(65vh,640px)] min-h-[320px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-3 bg-gray-900/50">
+                                <div id="inventory-fen-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                 </div>
                             </div>
                         </div>
@@ -457,7 +457,7 @@
                             <h2 class="text-lg font-bold text-gray-300 mb-4 flex items-center">
                                 <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti Fenici
                             </h2>
-                            <div class="overflow-x-auto max-h-[200px] overflow-y-auto border border-gray-700 rounded-xl">
+                            <div class="overflow-x-auto inv-logs-scroll max-h-[min(40vh,380px)] min-h-[180px] overflow-y-auto border border-gray-700 rounded-xl">
                                 <table class="w-full text-left text-sm border-collapse">
                                     <thead>
                                         <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">

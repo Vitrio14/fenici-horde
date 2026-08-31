@@ -435,8 +435,23 @@ h1, h2, h3 {
 #inventory-yj-section.staff-centered .inv-content-col,
 #inventory-fen-section.staff-centered .inv-content-col {
     width: 100% !important;
-    max-width: 920px !important;
+    max-width: 1100px !important;
     margin-left: auto !important;
     margin-right: auto !important;
     grid-column: auto !important;
+}
+
+
+/* ===== INVENTARIO: aree più grandi ===== */
+.inv-giacenza-scroll {
+    max-height: min(65vh, 640px) !important;
+    min-height: 320px !important;
+}
+.inv-logs-scroll {
+    max-height: min(40vh, 380px) !important;
+    min-height: 180px !important;
+}
+#inventory-yj-section.staff-centered .inv-content-col,
+#inventory-fen-section.staff-centered .inv-content-col {
+    max-width: 1100px !important;
 }
