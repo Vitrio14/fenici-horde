@@ -562,6 +562,10 @@ function setupUIForRole() {
     if (adminYj) adminYj.classList.toggle('hidden', !isGestore);
     if (adminFen) adminFen.classList.toggle('hidden', !isGestore);
 
+    // Inventario centrato per staff (niente colonna gestore vuota a sinistra)
+    if (inventoryYjSection) inventoryYjSection.classList.toggle('staff-centered', !isGestore);
+    if (inventoryFenSection) inventoryFenSection.classList.toggle('staff-centered', !isGestore);
+
     // Archivio storico solo gestore
     document.getElementById('manager-sales-archive-yj-section')?.classList.toggle('hidden', !isGestore);
     document.getElementById('manager-sales-archive-fen-section')?.classList.toggle('hidden', !isGestore);
@@ -707,13 +711,13 @@ function initDatabaseListeners() {
     });
 }
 
-// Protezione
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.onkeydown = function(e) {
-    if (e.keyCode == 123) return false;
-    if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
-    if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
-};
+// // Protezione
+// document.addEventListener('contextmenu', event => event.preventDefault());
+// document.onkeydown = function(e) {
+//     if (e.keyCode == 123) return false;
+//     if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+//     if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+// };
 
 // --- STASH DROPDOWNS ---
 function renderStashDropdowns() {
@@ -727,8 +731,9 @@ function renderStashDropdowns() {
         let opts = '';
         Object.keys(localStashes).forEach(key => {
             const s = localStashes[key];
-            const showYJ = s.showYJ !== false; // default true se non specificato
-            const showFen = s.showFen !== false;
+            // Solo depositi esplicitamente assegnati (niente default su entrambi)
+            const showYJ = s.showYJ === true;
+            const showFen = s.showFen === true;
             if (activity === 'yj' && !showYJ) return;
             if (activity === 'fen' && !showFen) return;
             opts += `<option value="${key}">${s.name}</option>`;
@@ -772,13 +777,11 @@ function renderCustomStashesList() {
     keys.forEach(key => {
         const s = localStashes[key];
         const name = s.name || key;
-        const hasFlags = ('showYJ' in s) || ('showFen' in s);
         let badges = '';
-        if (!hasFlags) {
-            badges = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">YJ</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">Fenici</span>';
-        } else {
-            if (s.showYJ) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">YJ</span> ';
-            if (s.showFen) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">Fenici</span>';
+        if (s.showYJ === true) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">YJ</span> ';
+        if (s.showFen === true) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">Fenici</span>';
+        if (!badges) {
+            badges = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30">Non assegnato (non visibile)</span>';
         }
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between gap-3 px-3 py-2 bg-gray-900/80 border border-gray-700 rounded-xl';
@@ -1358,13 +1361,14 @@ function renderInventoryYjLogs() {
 document.getElementById('inventory-yj-admin-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('inv-yj-admin-name').value.trim();
-    const imageUrl = document.getElementById('inv-yj-admin-img').value.trim();
+    let imageUrl = document.getElementById('inv-yj-admin-img').value.trim();
     const quantity = parseInt(document.getElementById('inv-yj-admin-qty').value) || 0;
     const stash = document.getElementById('inv-yj-admin-stash').value;
     if (!name) { showToast("Inserisci il nome dell'oggetto.", "warning"); return; }
+    if (!stash) { showToast("Seleziona un deposito YJ.", "warning"); return; }
     if (!imageUrl) imageUrl = 'https://via.placeholder.com/150?text=No+Immagine';
     db.collection('inventory_items').add({ name, imageUrl, quantity, stash, createdAt: Date.now() })
-        .then(() => { e.target.reset(); document.getElementById('inv-yj-admin-qty').value = 0; showToast("Oggetto YJ creato!", "success"); })
+        .then(() => { e.target.reset(); document.getElementById('inv-yj-admin-qty').value = 0; showToast("Oggetto creato solo in inventario YJ!", "success"); })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 
@@ -1483,13 +1487,14 @@ function renderInventoryFenLogs() {
 document.getElementById('inventory-fen-admin-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('inv-fen-admin-name').value.trim();
-    const imageUrl = document.getElementById('inv-fen-admin-img').value.trim();
+    let imageUrl = document.getElementById('inv-fen-admin-img').value.trim();
     const quantity = parseInt(document.getElementById('inv-fen-admin-qty').value) || 0;
     const stash = document.getElementById('inv-fen-admin-stash').value;
     if (!name) { showToast("Inserisci il nome dell'oggetto.", "warning"); return; }
+    if (!stash) { showToast("Seleziona un deposito Fenici.", "warning"); return; }
     if (!imageUrl) imageUrl = 'https://via.placeholder.com/150?text=No+Immagine';
     db.collection('fenici_items').add({ name, imageUrl, quantity, stash, createdAt: Date.now() })
-        .then(() => { e.target.reset(); document.getElementById('inv-fen-admin-qty').value = 0; showToast("Oggetto Fenici creato!", "success"); })
+        .then(() => { e.target.reset(); document.getElementById('inv-fen-admin-qty').value = 0; showToast("Oggetto creato solo in inventario Fenici!", "success"); })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 

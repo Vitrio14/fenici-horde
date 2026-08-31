@@ -411,3 +411,32 @@ h1, h2, h3 {
     backdrop-filter: blur(8px);
 }
 
+
+/* ===== INVENTARIO STAFF: contenuto centrato ===== */
+#inventory-yj-section.staff-centered .inv-layout-grid,
+#inventory-fen-section.staff-centered .inv-layout-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    grid-template-columns: none !important;
+}
+
+#inventory-yj-section.staff-centered .inv-admin-col,
+#inventory-fen-section.staff-centered .inv-admin-col {
+    display: none !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+#inventory-yj-section.staff-centered .inv-content-col,
+#inventory-fen-section.staff-centered .inv-content-col {
+    width: 100% !important;
+    max-width: 920px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    grid-column: auto !important;
+}
