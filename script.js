@@ -845,19 +845,15 @@ if (stashForm) {
     });
 }
 
-// --- LIBRERIA IMMAGINI ITEM (multi PNG in Firestore, senza Storage) ---
+// --- LIBRERIA IMMAGINI ITEM (click button, no form submit = no page reload) ---
 const MAX_ITEM_IMAGE_BYTES = 400 * 1024;
 
 function renderItemImageSelects() {
     const opts = ['<option value="">— Nessuna / placeholder —</option>'];
-    const keys = Object.keys(localItemImages).sort((a, b) => {
-        const na = (localItemImages[a].fileName || '').toLowerCase();
-        const nb = (localItemImages[b].fileName || '').toLowerCase();
-        return na.localeCompare(nb);
-    });
-    keys.forEach(id => {
-        const img = localItemImages[id];
-        opts.push(`<option value="${id}">${img.fileName || id}</option>`);
+    Object.keys(localItemImages).sort((a, b) => {
+        return (localItemImages[a].fileName || '').localeCompare(localItemImages[b].fileName || '', undefined, { sensitivity: 'base' });
+    }).forEach(id => {
+        opts.push('<option value="' + id + '">' + (localItemImages[id].fileName || id) + '</option>');
     });
     const html = opts.join('');
     ['inv-yj-admin-img', 'inv-fen-admin-img'].forEach(selId => {
@@ -884,22 +880,17 @@ function renderItemImagesLibrary() {
         const name = img.fileName || 'file.png';
         const card = document.createElement('div');
         card.className = 'relative bg-gray-900 border border-gray-700 rounded-xl overflow-hidden group';
-        card.innerHTML = `
-            <div class="h-20 flex items-center justify-center bg-gray-950 p-2">
-                <img src="${img.dataUrl || ''}" alt="${name}" class="max-h-full max-w-full object-contain" onerror="this.style.opacity='0.3'">
-            </div>
-            <div class="p-2 border-t border-gray-800">
-                <p class="text-[11px] text-amber-400 font-mono truncate" title="${name}">${name}</p>
-            </div>
-            <button type="button" class="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition" title="Elimina">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        `;
-        card.querySelector('button').addEventListener('click', () => {
-            showConfirmModal('Elimina immagine', `Rimuovere "${name}" dalla libreria? Gli oggetti già creati mantengono la loro immagine.`, () => {
+        card.innerHTML =
+            '<div class="h-20 flex items-center justify-center bg-gray-950 p-2">' +
+            '<img src="' + (img.dataUrl || '') + '" alt="' + name.replace(/"/g, '') + '" class="max-h-full max-w-full object-contain" onerror="this.style.opacity=\'0.3\'">' +
+            '</div><div class="p-2 border-t border-gray-800">' +
+            '<p class="text-[11px] text-amber-400 font-mono truncate" title="' + name.replace(/"/g, '') + '">' + name + '</p></div>' +
+            '<button type="button" class="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition" title="Elimina"><i class="fa-solid fa-trash"></i></button>';
+        card.querySelector('button').addEventListener('click', function () {
+            showConfirmModal('Elimina immagine', 'Rimuovere "' + name + '" dalla libreria?', function () {
                 db.collection('item_images').doc(id).delete()
-                    .then(() => showToast('Immagine rimossa.', 'info'))
-                    .catch(err => showToast(err.message, 'error'));
+                    .then(function () { showToast('Immagine rimossa.', 'info'); })
+                    .catch(function (err) { showToast(err.message, 'error'); });
             }, true);
         });
         grid.appendChild(card);
@@ -907,87 +898,115 @@ function renderItemImagesLibrary() {
 }
 
 function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error('Lettura fallita: ' + file.name));
+    return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () { resolve(reader.result); };
+        reader.onerror = function () { reject(new Error('Lettura fallita: ' + file.name)); };
         reader.readAsDataURL(file);
     });
 }
 
-document.getElementById('item-image-upload-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (userRole !== 'gestore') {
-        showToast('Solo il gestore può caricare immagini.', 'error');
-        return;
-    }
-    const fileInput = document.getElementById('item-image-file');
-    const files = fileInput?.files ? Array.from(fileInput.files) : [];
-    if (files.length === 0) {
-        showToast('Seleziona uno o più file PNG.', 'warning');
-        return;
-    }
-
-    const btn = document.getElementById('item-image-upload-btn');
-    const prevHtml = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Carico...';
-    }
-
-    let ok = 0, skip = 0, fail = 0;
-    const existingNames = new Set(
-        Object.values(localItemImages).map(i => (i.fileName || '').toLowerCase())
-    );
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> ' + (i + 1) + '/' + files.length;
-
-        const isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
-        if (!isPng) { skip++; continue; }
-        if (file.size > MAX_ITEM_IMAGE_BYTES) {
-            showToast('"' + file.name + '" troppo grande (' + Math.round(file.size / 1024) + ' KB). Max ' + Math.round(MAX_ITEM_IMAGE_BYTES / 1024) + ' KB.', 'warning');
-            skip++;
-            continue;
+async function uploadItemImagesFromInput() {
+    try {
+        if (userRole !== 'gestore') {
+            showToast('Solo il gestore può caricare immagini.', 'error');
+            return;
         }
-        const baseName = file.name.replace(/[^\w.\-()+ ]+/g, '_');
-        if (existingNames.has(baseName.toLowerCase())) {
-            showToast('"' + baseName + '" già in libreria, saltato.', 'info');
-            skip++;
-            continue;
+        var fileInput = document.getElementById('item-image-file');
+        var files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+        if (files.length === 0) {
+            showToast('Seleziona uno o più file PNG.', 'warning');
+            return;
         }
-        try {
-            const dataUrl = await readFileAsDataURL(file);
-            await db.collection('item_images').add({
-                fileName: baseName,
-                dataUrl: dataUrl,
-                size: file.size,
-                createdAt: Date.now()
-            });
-            existingNames.add(baseName.toLowerCase());
-            ok++;
-        } catch (err) {
-            fail++;
-            console.error(err);
-            showToast('Errore su "' + file.name + '": ' + (err.message || err), 'error');
+
+        var btn = document.getElementById('item-image-upload-btn');
+        var statusEl = document.getElementById('item-image-status');
+        var prevHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Carico...';
         }
-    }
+        if (statusEl) {
+            statusEl.classList.remove('hidden');
+            statusEl.textContent = 'Caricamento in corso...';
+        }
 
-    e.target.reset();
-    if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+        var ok = 0, skip = 0, fail = 0;
+        var existingNames = new Set(
+            Object.values(localItemImages).map(function (i) { return (i.fileName || '').toLowerCase(); })
+        );
 
-    if (ok > 0) {
-        let msg = 'Caricate ' + ok + ' immagini';
-        if (skip) msg += ' (' + skip + ' saltate)';
-        if (fail) msg += ' (' + fail + ' errori)';
-        showToast(msg + '.', 'success');
-    } else if (skip > 0 && fail === 0) {
-        showToast('Nessuna nuova immagine caricata (già presenti o non valide).', 'warning');
-    } else if (fail > 0) {
-        showToast('Caricamento fallito.', 'error');
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> ' + (i + 1) + '/' + files.length;
+            if (statusEl) statusEl.textContent = 'Carico ' + (i + 1) + ' di ' + files.length + ': ' + file.name;
+
+            var isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
+            if (!isPng) { skip++; continue; }
+            if (file.size > MAX_ITEM_IMAGE_BYTES) {
+                showToast('"' + file.name + '" troppo grande (' + Math.round(file.size / 1024) + ' KB). Max 400 KB.', 'warning');
+                skip++;
+                continue;
+            }
+            var baseName = file.name.replace(/[^\w.\-()+ ]+/g, '_');
+            if (existingNames.has(baseName.toLowerCase())) {
+                showToast('"' + baseName + '" già in libreria, saltato.', 'info');
+                skip++;
+                continue;
+            }
+            try {
+                var dataUrl = await readFileAsDataURL(file);
+                await db.collection('item_images').add({
+                    fileName: baseName,
+                    dataUrl: dataUrl,
+                    size: file.size,
+                    createdAt: Date.now()
+                });
+                existingNames.add(baseName.toLowerCase());
+                ok++;
+            } catch (err) {
+                fail++;
+                console.error(err);
+                showToast('Errore su "' + file.name + '": ' + (err.message || err), 'error');
+            }
+        }
+
+        if (fileInput) fileInput.value = '';
+        if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+        if (statusEl) {
+            if (ok > 0) statusEl.textContent = 'Completato: ' + ok + ' caricate' + (skip ? ', ' + skip + ' saltate' : '') + '.';
+            else statusEl.textContent = 'Nessuna immagine nuova caricata.';
+        }
+
+        if (ok > 0) showToast('Caricate ' + ok + ' immagini' + (skip ? ' (' + skip + ' saltate)' : '') + '.', 'success');
+        else if (skip > 0 && fail === 0) showToast('Nessuna nuova immagine (già presenti o non valide).', 'warning');
+        else if (fail > 0) showToast('Caricamento fallito.', 'error');
+    } catch (err) {
+        console.error('uploadItemImagesFromInput', err);
+        showToast('Errore upload: ' + (err.message || err), 'error');
+        var btn2 = document.getElementById('item-image-upload-btn');
+        if (btn2) { btn2.disabled = false; btn2.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Carica PNG'; }
     }
-});
+}
+
+// Bind su click (type=button) → non ricarica la pagina
+(function bindItemImageUpload() {
+    function bind() {
+        var btn = document.getElementById('item-image-upload-btn');
+        if (!btn || btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            uploadItemImagesFromInput();
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind);
+    } else {
+        bind();
+    }
+})();
 
 
 // --- EMPLOYEE DROPDOWNS ---
