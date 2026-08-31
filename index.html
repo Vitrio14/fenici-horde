@@ -321,21 +321,23 @@
 
             <!-- ========== SEZIONE INVENTARIO YELLOW JACK ========== -->
             <section id="inventory-yj-section" class="hidden space-y-6">
-                <div class="inv-layout-grid grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="inv-admin-col space-y-6 xl:col-span-1">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="space-y-6 xl:col-span-1">
                         <div id="admin-inventory-yj-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
                                 <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito YJ (Gestore)
                             </h2>
-                            <p class="text-gray-400 text-xs mb-3">L&apos;oggetto viene creato <strong class="text-amber-400">solo</strong> in inventario Yellow Jack.</p>
                             <form id="inventory-yj-admin-form" class="space-y-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Nome Oggetto</label>
                                     <input type="text" id="inv-yj-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Link Foto (URL)</label>
-                                    <input type="url" id="inv-yj-admin-img" placeholder="https://... (opzionale)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Immagine (dalla libreria)</label>
+                                    <select id="inv-yj-admin-img" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <option value="">— Nessuna / placeholder —</option>
+                                    </select>
+                                    <p class="text-[10px] text-gray-500 mt-1">Carica le PNG in Gestione → Libreria Immagini</p>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
@@ -354,7 +356,7 @@
                         </div>
                     </div>
 
-                    <div class="inv-content-col space-y-6 xl:col-span-2">
+                    <div class="space-y-6 xl:col-span-2">
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
@@ -398,21 +400,23 @@
 
             <!-- ========== SEZIONE INVENTARIO FENICI ========== -->
             <section id="inventory-fen-section" class="hidden space-y-6">
-                <div class="inv-layout-grid grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="inv-admin-col space-y-6 xl:col-span-1">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="space-y-6 xl:col-span-1">
                         <div id="admin-inventory-fen-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
                                 <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito Fenici (Gestore)
                             </h2>
-                            <p class="text-gray-400 text-xs mb-3">L&apos;oggetto viene creato <strong class="text-amber-400">solo</strong> in inventario Fenici.</p>
                             <form id="inventory-fen-admin-form" class="space-y-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Nome Oggetto</label>
                                     <input type="text" id="inv-fen-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Link Foto (URL)</label>
-                                    <input type="url" id="inv-fen-admin-img" placeholder="https://... (opzionale)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Immagine (dalla libreria)</label>
+                                    <select id="inv-fen-admin-img" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <option value="">— Nessuna / placeholder —</option>
+                                    </select>
+                                    <p class="text-[10px] text-gray-500 mt-1">Carica le PNG in Gestione → Libreria Immagini</p>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
@@ -431,7 +435,7 @@
                         </div>
                     </div>
 
-                    <div class="inv-content-col space-y-6 xl:col-span-2">
+                    <div class="space-y-6 xl:col-span-2">
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
@@ -475,6 +479,25 @@
 
             <!-- ========== SEZIONE ADMIN / GESTIONE ========== -->
             <section id="admin-section" class="hidden space-y-8">
+
+                <!-- Libreria Immagini (Firestore base64, multi-upload, senza Storage) -->
+                <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <h3 class="text-lg font-bold text-amber-400 mb-2"><i class="fa-solid fa-images mr-2"></i> Libreria Immagini Item (PNG)</h3>
+                    <p class="text-gray-400 text-xs mb-4">Seleziona <strong class="text-amber-400">una o più PNG</strong> insieme (max ~400 KB ciascuna). In Inventario le scegli per <strong class="text-amber-400">nome file</strong>.</p>
+                    <form id="item-image-upload-form" class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end mb-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">File PNG (selezione multipla)</label>
+                            <input type="file" id="item-image-file" accept="image/png,.png" multiple required class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500 file:text-gray-900 file:font-bold file:text-xs">
+                        </div>
+                        <button type="submit" id="item-image-upload-btn" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
+                            <i class="fa-solid fa-upload mr-1"></i> Carica PNG
+                        </button>
+                    </form>
+                    <p class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider">Immagini caricate</p>
+                    <div id="item-images-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[260px] overflow-y-auto pr-1">
+                        <p class="col-span-full text-xs text-gray-500 italic">Nessuna immagine caricata.</p>
+                    </div>
+                </div>
                 
                 <!-- Creazione Depositi -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
