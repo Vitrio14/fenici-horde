@@ -77,11 +77,8 @@ function getStartOfCurrentWeek() {
 }
 
 function getStashName(stashId) {
-    if (stashId === "1") return "Bancone";
-    if (stashId === "2") return "Frigorifero";
-    if (stashId === "3") return "Officina";
     if (localStashes[stashId]) return localStashes[stashId].name;
-    return stashId;
+    return stashId || '—';
 }
 
 // --- TOAST ---
@@ -370,44 +367,72 @@ document.getElementById('show-staff-login')?.addEventListener('click', () => {
     loginStaffPanel.classList.remove('hidden');
 });
 
-// --- LOGIN STAFF (codice + password da Firestore) ---
+// --- LOGIN STAFF (nickname / login + password) ---
+let staffLoginInProgress = false;
+
 loginStaffForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const loginCode = document.getElementById('staff-login').value.trim().toLowerCase();
+    const nick = document.getElementById('staff-login').value.trim();
     const password = document.getElementById('staff-password').value;
 
-    if (!loginCode || !password) {
-        showToast("Inserisci codice login e password.", "warning");
+    if (!nick || !password) {
+        showToast("Inserisci nickname e password.", "warning");
         return;
     }
 
+    const btn = loginStaffForm.querySelector('button[type="submit"]');
+    const prevBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Accesso...';
+    }
+
+    staffLoginInProgress = true;
+
     try {
-        // Auth anonima per poter leggere Firestore (regole isAuth)
+        // Auth anonima necessaria per leggere Firestore
         if (!auth.currentUser) {
-            await auth.signInAnonymously();
+            try {
+                await auth.signInAnonymously();
+            } catch (authErr) {
+                const msg = (authErr && authErr.code === 'auth/admin-restricted-operation')
+                    ? "Auth anonima non attiva in Firebase. Attivala in Authentication → Sign-in method → Anonymous."
+                    : ("Auth fallita: " + (authErr.message || authErr));
+                showToast(msg, "error");
+                staffLoginInProgress = false;
+                if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
+                return;
+            }
         }
 
         const snap = await db.collection('employees').get();
+        const nickLower = nick.toLowerCase();
         let found = null;
         let foundId = null;
+
         snap.forEach(doc => {
             const d = doc.data();
-            if ((d.login || '').toLowerCase() === loginCode && d.password === password) {
+            const loginMatch = (d.login || '').trim().toLowerCase() === nickLower;
+            const nameMatch = (d.name || '').trim().toLowerCase() === nickLower;
+            // password confronto esatto (come salvata)
+            if ((loginMatch || nameMatch) && String(d.password) === String(password)) {
                 found = d;
                 foundId = doc.id;
             }
         });
 
         if (!found) {
+            staffLoginInProgress = false;
             await auth.signOut();
-            showToast("Codice login o password non validi.", "error");
+            showToast("Nickname o password non validi.", "error");
+            if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
             return;
         }
 
         staffSession = {
             id: foundId,
             name: found.name,
-            login: found.login,
+            login: found.login || found.name,
             roles: found.roles || { salesYJ: true, salesFen: false, invYJ: true, invFen: false },
             customPercentage: found.customPercentage || 40
         };
@@ -421,9 +446,14 @@ loginStaffForm?.addEventListener('submit', async (e) => {
         initDatabaseListeners();
         loginPage.classList.add('hidden');
         mainDashboard.classList.remove('hidden');
+        staffLoginInProgress = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
     } catch (err) {
-        showToast("Errore di accesso: " + err.message, "error");
+        staffLoginInProgress = false;
+        console.error('Login staff error:', err);
+        showToast("Errore di accesso: " + (err.message || err), "error");
         try { await auth.signOut(); } catch (_) {}
+        if (btn) { btn.disabled = false; btn.innerHTML = prevBtnHtml; }
     }
 });
 
@@ -462,9 +492,10 @@ auth.onAuthStateChanged(user => {
             loginPage.classList.add('hidden');
             mainDashboard.classList.remove('hidden');
         } else if (user.isAnonymous) {
-            // Staff: sessione già impostata dal form, oppure ripristino da sessionStorage
+            // Durante il login staff lasciamo gestire il form
+            if (staffLoginInProgress) return;
             const saved = sessionStorage.getItem('fenici_staff_session');
-            if (saved && !staffSession) {
+            if (saved) {
                 try {
                     staffSession = JSON.parse(saved);
                     currentEmployeeId = staffSession.id;
@@ -477,7 +508,7 @@ auth.onAuthStateChanged(user => {
                     auth.signOut();
                 }
             }
-            // se staffSession già settato dal form submit, UI già gestita
+            // altrimenti resta sulla login (anonimo senza sessione staff)
         } else {
             // altro account non autorizzato
             auth.signOut();
@@ -686,22 +717,47 @@ document.onkeydown = function(e) {
 
 // --- STASH DROPDOWNS ---
 function renderStashDropdowns() {
-    const selectsAdmin = [
-        document.getElementById('inv-yj-admin-stash'),
-        document.getElementById('inv-fen-admin-stash')
-    ];
-    const selectsFilter = [
-        document.getElementById('inv-yj-stash-filter'),
-        document.getElementById('inv-fen-stash-filter')
-    ];
-    const baseAdmin = `<option value="1">Bancone</option><option value="2">Frigorifero</option><option value="3">Officina</option>`;
-    const baseFilter = `<option value="all">Tutti i Depositi</option><option value="1">Bancone</option><option value="2">Frigorifero</option><option value="3">Officina</option>`;
-    let custom = '';
-    Object.keys(localStashes).forEach(key => {
-        custom += `<option value="${key}">${localStashes[key].name}</option>`;
-    });
-    selectsAdmin.forEach(s => { if (s) { const v = s.value; s.innerHTML = baseAdmin + custom; if (v) s.value = v; } });
-    selectsFilter.forEach(s => { if (s) { const v = s.value; s.innerHTML = baseFilter + custom; if (v) s.value = v; } });
+    const yjAdmin = document.getElementById('inv-yj-admin-stash');
+    const fenAdmin = document.getElementById('inv-fen-admin-stash');
+    const yjFilter = document.getElementById('inv-yj-stash-filter');
+    const fenFilter = document.getElementById('inv-fen-stash-filter');
+
+    function optionsFor(activity) {
+        // activity: 'yj' | 'fen'
+        let opts = '';
+        Object.keys(localStashes).forEach(key => {
+            const s = localStashes[key];
+            const showYJ = s.showYJ !== false; // default true se non specificato
+            const showFen = s.showFen !== false;
+            if (activity === 'yj' && !showYJ) return;
+            if (activity === 'fen' && !showFen) return;
+            opts += `<option value="${key}">${s.name}</option>`;
+        });
+        return opts;
+    }
+
+    if (yjAdmin) {
+        const v = yjAdmin.value;
+        const opts = optionsFor('yj');
+        yjAdmin.innerHTML = opts || '<option value="">Nessun deposito YJ</option>';
+        if (v && [...yjAdmin.options].some(o => o.value === v)) yjAdmin.value = v;
+    }
+    if (fenAdmin) {
+        const v = fenAdmin.value;
+        const opts = optionsFor('fen');
+        fenAdmin.innerHTML = opts || '<option value="">Nessun deposito Fenici</option>';
+        if (v && [...fenAdmin.options].some(o => o.value === v)) fenAdmin.value = v;
+    }
+    if (yjFilter) {
+        const v = yjFilter.value;
+        yjFilter.innerHTML = '<option value="all">Tutti i Depositi</option>' + optionsFor('yj');
+        if (v) yjFilter.value = v;
+    }
+    if (fenFilter) {
+        const v = fenFilter.value;
+        fenFilter.innerHTML = '<option value="all">Tutti i Depositi</option>' + optionsFor('fen');
+        if (v) fenFilter.value = v;
+    }
 }
 
 function renderCustomStashesList() {
@@ -709,26 +765,41 @@ function renderCustomStashesList() {
     if (!list) return;
     const keys = Object.keys(localStashes);
     if (keys.length === 0) {
-        list.innerHTML = '<p class="text-xs text-gray-500 italic">Nessun deposito personalizzato.</p>';
+        list.innerHTML = '<p class="text-xs text-gray-500 italic">Nessun deposito personalizzato. Creane uno sopra.</p>';
         return;
     }
-    list.innerHTML = keys.map(key => {
-        const name = (localStashes[key].name || key).replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        const safeName = (localStashes[key].name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        return `
-        <div class="flex items-center justify-between gap-3 px-3 py-2 bg-gray-900/80 border border-gray-700 rounded-xl">
-            <span class="text-sm text-gray-200 font-medium truncate"><i class="fa-solid fa-warehouse text-amber-500/70 mr-2"></i>${name}</span>
-            <button type="button" onclick="window.deleteCustomStash('${key}', '${safeName}')" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition shrink-0" title="Elimina deposito">
+    list.innerHTML = '';
+    keys.forEach(key => {
+        const s = localStashes[key];
+        const name = s.name || key;
+        const hasFlags = ('showYJ' in s) || ('showFen' in s);
+        let badges = '';
+        if (!hasFlags) {
+            badges = '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">YJ</span> <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">Fenici</span>';
+        } else {
+            if (s.showYJ) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">YJ</span> ';
+            if (s.showFen) badges += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">Fenici</span>';
+        }
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-3 px-3 py-2 bg-gray-900/80 border border-gray-700 rounded-xl';
+        row.innerHTML = `
+            <div class="min-w-0 flex-1">
+                <span class="text-sm text-gray-200 font-medium truncate block"><i class="fa-solid fa-warehouse text-amber-500/70 mr-2"></i></span>
+                <div class="mt-1 flex flex-wrap gap-1">${badges}</div>
+            </div>
+            <button type="button" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition shrink-0" title="Elimina deposito">
                 <i class="fa-solid fa-trash text-xs"></i>
-            </button>
-        </div>`;
-    }).join('');
+            </button>`;
+        row.querySelector('span.text-sm').appendChild(document.createTextNode(name));
+        row.querySelector('button').addEventListener('click', () => window.deleteCustomStash(key, name));
+        list.appendChild(row);
+    });
 }
 
 window.deleteCustomStash = function(id, name) {
     showConfirmModal(
         "Elimina deposito",
-        `Vuoi eliminare il deposito "${name}"? Gli oggetti già assegnati a questo deposito manterranno il riferimento, ma non comparirà più tra le opzioni.`,
+        'Vuoi eliminare il deposito "' + name + '"? Gli oggetti già assegnati a questo deposito manterranno il riferimento, ma non comparirà più tra le opzioni.',
         () => {
             db.collection('custom_stashes').doc(id).delete()
                 .then(() => showToast("Deposito eliminato.", "info"))
@@ -747,8 +818,21 @@ if (stashForm) {
             showToast("Inserisci un nome per il deposito.", "warning");
             return;
         }
-        db.collection('custom_stashes').add({ name })
-            .then(() => { stashForm.reset(); showToast("Deposito creato!", "success"); })
+        const showYJ = document.getElementById('stash-show-yj') ? document.getElementById('stash-show-yj').checked : true;
+        const showFen = document.getElementById('stash-show-fen') ? document.getElementById('stash-show-fen').checked : false;
+        if (!showYJ && !showFen) {
+            showToast("Seleziona almeno un inventario (YJ o Fenici).", "warning");
+            return;
+        }
+        db.collection('custom_stashes').add({ name, showYJ, showFen })
+            .then(() => {
+                stashForm.reset();
+                const yj = document.getElementById('stash-show-yj');
+                const fen = document.getElementById('stash-show-fen');
+                if (yj) yj.checked = true;
+                if (fen) fen.checked = false;
+                showToast("Deposito creato!", "success");
+            })
             .catch(err => showToast("Errore: " + err.message, "error"));
     });
 }

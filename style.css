@@ -389,7 +389,7 @@ h1, h2, h3 {
 /* ===== TOAST NOTIFICHE (angolo alto-destra) ===== */
 #toast-container {
     position: fixed !important;
-    top: 5rem !important;
+    top: 4.5rem !important;
     right: 1rem !important;
     left: auto !important;
     bottom: auto !important;

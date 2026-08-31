@@ -118,11 +118,11 @@
 
             <!-- LOGIN DIPENDENTE (default) -->
             <div id="login-staff-panel">
-                <p class="text-xs text-center text-gray-500 mb-4">Accedi con il tuo codice login e password</p>
+                <p class="text-xs text-center text-gray-500 mb-4">Accedi con nickname (o codice login) e password</p>
                 <form id="login-staff-form" class="space-y-5">
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Codice Login</label>
-                        <input type="text" id="staff-login" required autocomplete="username" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="es. mario.rossi">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nickname / Login</label>
+                        <input type="text" id="staff-login" required autocomplete="username" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="Il tuo nickname">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
@@ -199,7 +199,7 @@
             </div>
         </nav>
 
-        <div id="toast-container" class="fixed top-4 right-4 z-[200] flex flex-col gap-2 items-end pointer-events-none" style="max-width: min(360px, calc(100vw - 2rem));"></div>
+        <div id="toast-container" class="fixed top-20 right-4 z-[200] flex flex-col gap-2 items-end pointer-events-none" style="max-width: min(360px, calc(100vw - 2rem));"></div>
 
         <main class="flex-1 p-6 max-w-7xl w-full mx-auto relative z-0">
             
@@ -343,11 +343,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Deposito</label>
-                                        <select id="inv-yj-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                            <option value="1">Bancone</option>
-                                            <option value="2">Frigorifero</option>
-                                            <option value="3">Officina</option>
-                                        </select>
+                                        <select id="inv-yj-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500"><option value="">— Seleziona deposito —</option></select>
                                     </div>
                                 </div>
                                 <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg">
@@ -365,12 +361,7 @@
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                     <input type="text" id="inv-yj-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
-                                    <select id="inv-yj-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
-                                        <option value="all">Tutti i Depositi</option>
-                                        <option value="1">Bancone</option>
-                                        <option value="2">Frigorifero</option>
-                                        <option value="3">Officina</option>
-                                    </select>
+                                    <select id="inv-yj-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500"><option value="all">Tutti i Depositi</option></select>
                                 </div>
                             </div>
                             <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
@@ -428,11 +419,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Deposito</label>
-                                        <select id="inv-fen-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                            <option value="1">Bancone</option>
-                                            <option value="2">Frigorifero</option>
-                                            <option value="3">Officina</option>
-                                        </select>
+                                        <select id="inv-fen-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500"><option value="">— Seleziona deposito —</option></select>
                                     </div>
                                 </div>
                                 <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg">
@@ -450,12 +437,7 @@
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                     <input type="text" id="inv-fen-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
-                                    <select id="inv-fen-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
-                                        <option value="all">Tutti i Depositi</option>
-                                        <option value="1">Bancone</option>
-                                        <option value="2">Frigorifero</option>
-                                        <option value="3">Officina</option>
-                                    </select>
+                                    <select id="inv-fen-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500"><option value="all">Tutti i Depositi</option></select>
                                 </div>
                             </div>
                             <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
@@ -495,12 +477,27 @@
                 <!-- Creazione Depositi -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Creazione Depositi Personalizzati</h3>
-                    <p class="text-gray-400 text-xs mb-4">Aggiungi nuovi depositi disponibili sia in Inventario YJ che Fenici.</p>
-                    <form id="stash-form" class="flex flex-col sm:flex-row gap-3 mb-4">
-                        <input type="text" id="stash-name" placeholder="Es. Magazzino Retrostante" required class="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
-                        <button type="submit" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
-                            <i class="fa-solid fa-plus mr-1"></i> Crea Deposito
-                        </button>
+                    <p class="text-gray-400 text-xs mb-4">Crea depositi e scegli se mostrarli in Inventario YJ, Fenici o entrambi. Non ci sono più depositi predefiniti.</p>
+                    <form id="stash-form" class="space-y-3 mb-4">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" id="stash-name" placeholder="Es. Magazzino Retrostante" required class="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            <button type="submit" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
+                                <i class="fa-solid fa-plus mr-1"></i> Crea Deposito
+                            </button>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 mb-2">Mostra in:</p>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="stash-show-yj" class="rounded text-amber-500" checked>
+                                    <span class="text-xs text-gray-200">Inventario Yellow Jack</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="stash-show-fen" class="rounded text-amber-500">
+                                    <span class="text-xs text-gray-200">Inventario Fenici</span>
+                                </label>
+                            </div>
+                        </div>
                     </form>
                     <div>
                         <p class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider">Depositi personalizzati attivi</p>
@@ -655,8 +652,8 @@
                                 <input type="number" id="emp-percentage" placeholder="es. 45 (default 40)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Codice Login</label>
-                                <input type="text" id="emp-login" placeholder="es. mario.rossi" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Nickname / Login</label>
+                                <input type="text" id="emp-login" placeholder="nickname per accedere" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1">Password</label>
