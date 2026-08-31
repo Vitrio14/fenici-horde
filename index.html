@@ -3,243 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestionale Yellow Jack | Horde RP</title>
+    <title>Gestionale Fenici-Horde | RP</title>
     <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .bg-yellow-jack { background-color: #f59e0b; }
-        .text-yellow-jack { color: #f59e0b; }
-        .border-yellow-jack { border-color: #f59e0b; }
-        
-        /* Banner semi-trasparente fisso sullo sfondo */
-        .bg-banner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('banner.png');
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            opacity: 0.06;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        /* Forza i contenitori principali a stare sopra lo sfondo */
-        /* MODIFICA: Rimosso #custom-modal per permettere a Tailwind di centrarlo correttamente con 'fixed' */
-        #login-page, #main-dashboard, #toast-container {
-            position: relative;
-            z-index: 10;
-        }
-
-        /* Scrollbar personalizzata per tabelle e liste */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #f59e0b;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans flex flex-col relative overflow-x-hidden">
 
-    <style>
-    /* Reset e overlay a tutto schermo */
-    #schermata-manutenzione {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: #0b0f19;
-        background-image: 
-            radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-            radial-gradient(at 50% 0%, hsla(225,39%,30%,0.3) 0, transparent 50%),
-            radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
-        z-index: 999999;
-        display: none; /* Gestito in tempo reale dallo script tramite il file status.txt */
-        justify-content: center;
-        align-items: center;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        color: #f3f4f6;
-        text-align: center;
-        box-sizing: border-box;
-        padding: 24px;
-    }
-
-    /* Card centrale minimale (effetto Glassmorphism) */
-    #schermata-manutenzione .card-manutenzione {
-        background: rgba(17, 24, 39, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 48px 32px;
-        border-radius: 24px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        max-width: 480px;
-        width: 100%;
-    }
-
-    /* Badge di stato superiore */
-    #schermata-manutenzione .badge-manutenzione {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(59, 130, 246, 0.1);
-        border: 1px solid rgba(59, 130, 246, 0.2);
-        color: #60a5fa;
-        padding: 6px 14px;
-        border-radius: 100px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        margin-bottom: 28px;
-    }
-
-    /* Pallino pulsante nel badge */
-    #schermata-manutenzione .badge-dot {
-        width: 6px;
-        height: 6px;
-        background-color: #3b82f6;
-        border-radius: 50%;
-        animation: pulse-dot-manutenzione 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    /* Titolo */
-    #schermata-manutenzione .titolo-manutenzione {
-        font-size: 2rem;
-        font-weight: 700;
-        letter-spacing: -0.025em;
-        margin-bottom: 16px;
-        color: #ffffff;
-    }
-
-    /* Testo descrittivo */
-    #schermata-manutenzione .testo-manutenzione {
-        font-size: 1rem;
-        line-height: 1.6;
-        color: #9ca3af;
-        margin-bottom: 32px;
-    }
-
-    /* Evidenziazione nome developer */
-    #schermata-manutenzione .dev-name {
-        color: #60a5fa;
-        font-weight: 600;
-    }
-
-    /* Loader lineare */
-    #schermata-manutenzione .progress-bar-container {
-        width: 120px;
-        height: 3px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        margin: 0 auto 32px auto;
-        overflow: hidden;
-        position: relative;
-    }
-
-    #schermata-manutenzione .progress-bar-line {
-        width: 40%;
-        height: 100%;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-        border-radius: 10px;
-        position: absolute;
-        animation: loading-bar-manutenzione 1.5s ease-in-out infinite;
-    }
-
-    /* Footer personalizzato */
-    #schermata-manutenzione .footer-manutenzione {
-        font-size: 0.8rem;
-        line-height: 1.5;
-        color: #6b7280;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        padding-top: 20px;
-    }
-    
-    #schermata-manutenzione .footer-highlight {
-        color: #9ca3af;
-    }
-
-    @keyframes loading-bar-manutenzione {
-        0% { left: -40%; }
-        50% { left: 100%; }
-        100% { left: 100%; }
-    }
-
-    @keyframes pulse-dot-manutenzione {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: .4; transform: scale(0.9); }
-    }
-</style>
-
-<div id="schermata-manutenzione">
-    <div class="card-manutenzione">
-        <div class="badge-manutenzione">
-            <span class="badge-dot"></span>
-            Aggiornamento in corso
-        </div>
-        <h1 class="titolo-manutenzione">Sito in manutenzione</h1>
-        <p class="testo-manutenzione">
-            Il developer <span class="dev-name">Vitrio</span> sta lavorando per migliorare il sito e implementare nuove funzionalità. Il servizio tornerà regolare a breve.
-        </p>
-        <div class="progress-bar-container">
-            <div class="progress-bar-line"></div>
-        </div>
-        <div class="footer-manutenzione">
-            Vitrio - Tutti i diritti riservati<br>
-            <span class="footer-highlight">Sito in manutenzione! Torniamo a breve!</span>
+    <!-- SCHERMATA MANUTENZIONE -->
+    <div id="schermata-manutenzione">
+        <div class="card-manutenzione">
+            <div class="badge-manutenzione">
+                <span class="badge-dot"></span>
+                Aggiornamento in corso
+            </div>
+            <h1 class="titolo-manutenzione">Sito in manutenzione</h1>
+            <p class="testo-manutenzione">
+                Il developer <span class="dev-name">Vitrio</span> sta lavorando per migliorare il sito e implementare nuove funzionalità. Il servizio tornerà regolare a breve.
+            </p>
+            <div class="progress-bar-container">
+                <div class="progress-bar-line"></div>
+            </div>
+            <div class="footer-manutenzione">
+                Vitrio - Tutti i diritti riservati<br>
+                <span class="footer-highlight">Sito in manutenzione! Torniamo a breve!</span>
+            </div>
         </div>
     </div>
-</div>
-
-<script>
-    (function() {
-        const manutenzioneDiv = document.getElementById('schermata-manutenzione');
-        
-        function controllaStatoManutenzione() {
-            // Carica il file status.txt dal server evitando la cache del browser
-            fetch('status.txt?t=' + new Date().getTime())
-                .then(response => {
-                    if (!response.ok) throw new Error('File status non trovato');
-                    return response.text();
-                })
-                .then(stato => {
-                    const statoPulito = stato.trim().toLowerCase();
-                    
-                    if (statoPulito === 'on') {
-                        manutenzioneDiv.style.display = 'flex'; // Attiva la schermata per tutti
-                    } else {
-                        manutenzioneDiv.style.display = 'none'; // Nasconde la schermata
-                    }
-                })
-                .catch(err => {
-                    console.log('Errore controllo manutenzione:', err);
-                });
-        }
-
-        // Controllo iniziale immediato
-        controllaStatoManutenzione();
-
-        // Controllo automatico ogni 5 secondi
-        setInterval(controllaStatoManutenzione, 5000);
-    })();
-</script>
 
     <div class="bg-banner-overlay"></div>
 
+    <!-- SMART ACTION MODAL -->
     <div id="smart-action-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 border border-gray-700 p-6 rounded-2xl max-w-md w-full shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="smart-modal-box">
             <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
@@ -285,7 +80,7 @@
 
                 <div id="smart-modal-reason-container" class="hidden">
                     <label class="block text-xs font-medium text-gray-400 mb-1">Motivo (Opzionale)</label>
-                    <input type="text" id="smart-modal-reason" placeholder="Es. Manutenzione, Rifnornimento..." class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500 shadow-inner">
+                    <input type="text" id="smart-modal-reason" placeholder="Es. Manutenzione, Rifornimento..." class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500 shadow-inner">
                 </div>
                 
                 <button type="submit" id="smart-modal-submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-extrabold rounded-xl transition transform active:scale-95 shadow-lg mt-2">
@@ -295,6 +90,7 @@
         </div>
     </div>
 
+    <!-- CUSTOM CONFIRM MODAL -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 border border-gray-700 p-6 rounded-2xl max-w-md w-full shadow-2xl transform transition-all scale-95 opacity-0 duration-200" id="modal-box">
             <div class="flex items-center space-x-3 text-amber-400 mb-4">
@@ -309,51 +105,93 @@
         </div>
     </div>
 
+    <!-- LOGIN PAGE (solo gestore) -->
     <div id="login-page" class="flex flex-1 items-center justify-center px-4 py-12">
         <div class="bg-gray-800/90 backdrop-blur-sm p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700">
             <div class="text-center mb-8">
                 <div class="mb-4 flex justify-center">
-                    <img src="logo.png" alt="Yellow Jack Logo" class="h-20 w-auto object-contain drop-shadow-[0_4px_10px_rgba(245,158,11,0.2)]" style="display: block;" id="login-main-logo">
+                    <img src="logo.png" alt="Fenici-Horde Logo" class="h-24 w-auto object-contain" style="display: block;" id="login-main-logo">
                 </div>
-                <h1 class="text-3xl font-bold tracking-wider text-amber-400">YELLOW JACK</h1>
+                <h1 class="text-3xl font-bold tracking-wider" style="background: linear-gradient(90deg, #f0b429, #ff6b1a, #f0b429); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">FENICI-HORDE</h1>
                 <p class="text-gray-400 mt-2">Gestionale Vendite & Staff</p>
-                <p class="text-xs text-gray-500 mt-1">Accedi con yellow@horde.it o yellow.gestore@horde.it</p>
             </div>
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Email Aziendale</label>
-                    <input type="email" id="login-email" required class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="nome@horde.it">
+
+            <!-- LOGIN DIPENDENTE (default) -->
+            <div id="login-staff-panel">
+                <p class="text-xs text-center text-gray-500 mb-4">Accedi con il tuo codice login e password</p>
+                <form id="login-staff-form" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Codice Login</label>
+                        <input type="text" id="staff-login" required autocomplete="username" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="es. mario.rossi">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" id="staff-password" required autocomplete="current-password" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold rounded-xl transition transform active:scale-95 shadow-lg shadow-amber-500/10">
+                        Accedi <i class="fa-solid fa-right-to-bracket ml-2"></i>
+                    </button>
+                </form>
+                <div class="mt-6 pt-5 border-t border-gray-700 text-center">
+                    <button type="button" id="show-gestore-login" class="text-sm text-amber-400 hover:text-amber-300 transition font-medium">
+                        <i class="fa-solid fa-user-shield mr-1"></i> Accesso Gestore
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                    <input type="password" id="login-password" required class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition">
+            </div>
+
+            <!-- LOGIN GESTORE (nascosto di default) -->
+            <div id="login-gestore-panel" class="hidden">
+                <p class="text-xs text-center text-gray-500 mb-4">Accesso riservato all&apos;amministrazione</p>
+                <form id="login-gestore-form" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email Gestore</label>
+                        <input type="email" id="gestore-email" required class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition" placeholder="yellow.gestore@horde.it" value="yellow.gestore@horde.it">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" id="gestore-password" required class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:outline-none focus:border-amber-500 text-white transition">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold rounded-xl transition transform active:scale-95 shadow-lg shadow-amber-500/10">
+                        Accedi come Gestore <i class="fa-solid fa-shield-halved ml-2"></i>
+                    </button>
+                </form>
+                <div class="mt-6 pt-5 border-t border-gray-700 text-center">
+                    <button type="button" id="show-staff-login" class="text-sm text-gray-400 hover:text-amber-400 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Torna al login staff
+                    </button>
                 </div>
-                <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold rounded-xl transition transform active:scale-95 shadow-lg shadow-amber-500/10">
-                    Accedi <i class="fa-solid fa-right-to-bracket ml-2"></i>
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 
+    <!-- MAIN DASHBOARD -->
     <div id="main-dashboard" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-gray-800/95 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+        <nav class="bg-gray-800/95 backdrop-blur-sm border-b border-gray-700 px-4 py-3 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center space-x-3">
                 <img src="logo.png" alt="Logo" class="h-9 w-auto object-contain" id="nav-main-logo">
-                <span class="text-2xl font-black text-amber-400 tracking-wider">YELLOW JACK</span>
+                <span class="text-xl font-black tracking-wider" style="background: linear-gradient(90deg, #f0b429, #ff6b1a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">FENICI-HORDE</span>
                 <span id="role-badge" class="px-3 py-1 bg-gray-700 text-xs font-semibold rounded-full text-gray-300"></span>
             </div>
-            <div class="flex items-center space-x-4">
-                <button id="nav-sales-btn" class="px-4 py-2 rounded-xl bg-amber-500 text-gray-900 font-medium transition hover:bg-amber-400">
-                    <i class="fa-solid fa-cash-register mr-2"></i> Vendite
+            <div class="flex items-center flex-wrap gap-2">
+                <!-- Vendite Yellow Jack -->
+                <button id="nav-sales-yj-btn" class="px-3 py-2 rounded-xl nav-active font-medium transition text-sm">
+                    <i class="fa-solid fa-cash-register mr-1"></i> Vendite YJ
                 </button>
-                <button id="nav-inventory-btn" class="px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600">
-                    <i class="fa-solid fa-boxes-stacked mr-2"></i> Inventario
+                <!-- Vendite Fenici -->
+                <button id="nav-sales-fen-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
+                    <i class="fa-solid fa-cash-register mr-1"></i> Vendite Fenici
                 </button>
-                <button id="nav-fenici-btn" class="px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600">
-                    <i class="fa-solid fa-fire-flame-curved mr-2"></i> Fenici
+                <!-- Inventario Yellow Jack -->
+                <button id="nav-inventory-yj-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
+                    <i class="fa-solid fa-boxes-stacked mr-1"></i> Inv. YJ
                 </button>
-                <button id="nav-admin-btn" class="hidden px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600">
-                    <i class="fa-solid fa-user-gear mr-2"></i> Gestione
+                <!-- Inventario Fenici -->
+                <button id="nav-inventory-fen-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
+                    <i class="fa-solid fa-boxes-stacked mr-1"></i> Inv. Fenici
+                </button>
+                <!-- Gestione (solo gestore) -->
+                <button id="nav-admin-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
+                    <i class="fa-solid fa-user-gear mr-1"></i> Gestione
                 </button>
                 <button id="logout-btn" class="p-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition">
                     <i class="fa-solid fa-power-off"></i>
@@ -361,175 +199,151 @@
             </div>
         </nav>
 
-        <div id="toast-container" class="fixed top-3 right-10 z-[100] flex flex-col gap-3 max-w-md w-full px-4 sm:px-0"></div>
+        <div id="toast-container" class="fixed top-4 right-4 z-[200] flex flex-col gap-2 items-end pointer-events-none" style="max-width: min(360px, calc(100vw - 2rem));"></div>
 
         <main class="flex-1 p-6 max-w-7xl w-full mx-auto relative z-0">
             
-            <section id="sales-section" class="space-y-6">
-                
-<div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-    <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
-        <i class="fa-solid fa-bolt mr-2 text-yellow-300"></i> Azioni Rapide Vendita
-    </h2>
-    <p class="text-gray-400 text-xs mb-4">Clicca su un servizio per aprire il terminale rapido ed effettuare la registrazione.</p>
-    
-    <div id="quick-sales-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-h-[280px] overflow-y-auto pr-1">
-    </div>
-</div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 h-fit shadow-xl">
-                        <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
-                            <i class="fa-solid fa-cart-plus mr-2"></i> Nuova Vendita (Manuale)
-                        </h2>
-                        <form id="sale-form" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Dipendente</label>
-                                <select id="sale-employee" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Tipo Servizio/Oggetto</label>
-                                <select id="sale-service-select" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                    <option value="custom">-- VENDITA LIBERA --</option>
-                                </select>
-                            </div>
-                            <div class="space-y-4">
-                                <div id="custom-name-field">
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Nome Servizio/Oggetto Libero</label>
-                                    <input type="text" id="sale-custom-name" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500" placeholder="Esempio: Riparazione speciale">
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Quantità</label>
-                                        <input type="number" id="sale-quantity" value="1" min="1" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                    </div>
-                                    <div>
-                                        <label id="price-label-text" class="block text-xs font-medium text-gray-400 mb-1">Costo Totale (€)</label>
-                                        <input type="number" step="0.01" id="sale-custom-price" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500" placeholder="0.00">
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold rounded-xl transition shadow-lg shadow-amber-500/10">
-                                Registra Vendita <i class="fa-solid fa-check ml-1"></i>
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 lg:col-span-2 shadow-xl">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                            <h2 class="text-xl font-bold text-amber-400 flex items-center">
-                                <i class="fa-solid fa-list-check mr-2"></i> Vendite Correnti della Settimana
-                            </h2>
-                            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                <select id="sales-employee-filter" class="hidden px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
-                                    <option value="all">📊 Tutti i Dipendenti</option>
-                                </select>
-                                <span class="text-xs bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full border border-amber-500/20 whitespace-nowrap">Reset Automatico Domenica</span>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto max-h-[180px] overflow-y-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">
-                                        <th class="pb-3 pt-2">Data</th>
-                                        <th class="pb-3 pt-2">Dipendente</th>
-                                        <th class="pb-3 pt-2">Servizio (Qta)</th>
-                                        <th class="pb-3 pt-2">Totale Incassato</th>
-                                        <th class="pb-3 pt-2">Guadagno Yellow</th>
-                                        <th class="pb-3 pt-2">Spett. Corp</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="current-sales-table" class="divide-y divide-gray-700 text-sm">
-                                </tbody>
-                            </table>
-                        </div>
+            <!-- ========== SEZIONE VENDITE YELLOW JACK ========== -->
+            <section id="sales-yj-section" class="space-y-6">
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
+                        <i class="fa-solid fa-bolt mr-2 text-yellow-300"></i> Azioni Rapide Vendita - Yellow Jack
+                    </h2>
+                    <p class="text-gray-400 text-xs mb-4">Clicca su un servizio per aprire il terminale rapido ed effettuare la registrazione.</p>
+                    <div id="quick-sales-yj-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-h-[280px] overflow-y-auto pr-1">
                     </div>
                 </div>
 
-                <div id="manager-sales-archive-section" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                         <h2 class="text-xl font-bold text-amber-400 flex items-center">
-                            <i class="fa-solid fa-box-archive mr-2"></i> Archivio Storico Dettagliato Vendite
+                            <i class="fa-solid fa-list-check mr-2"></i> Vendite Correnti YJ (Settimana)
                         </h2>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            <label class="text-xs font-bold text-gray-400 uppercase mr-1">Filtra Archivio Staff:</label>
-                            <select id="archive-window-employee-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                            <select id="sales-yj-employee-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                                <option value="all">📊 Tutti i Dipendenti</option>
+                            </select>
+                            <span class="text-xs bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full border border-amber-500/20 whitespace-nowrap">Reset Automatico Domenica</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[280px] overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">
+                                    <th class="pb-3 pt-2">Data</th>
+                                    <th class="pb-3 pt-2">Dipendente</th>
+                                    <th class="pb-3 pt-2">Servizio (Qta)</th>
+                                    <th class="pb-3 pt-2">Totale Incassato</th>
+                                    <th class="pb-3 pt-2">Guadagno Yellow</th>
+                                    <th class="pb-3 pt-2">Spett. Corp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="current-sales-yj-table" class="divide-y divide-gray-700 text-sm">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="manager-sales-archive-yj-section" class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center">
+                            <i class="fa-solid fa-box-archive mr-2"></i> Archivio Storico Vendite Yellow Jack
+                        </h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <label class="text-xs font-bold text-gray-400 uppercase mr-1">Filtra:</label>
+                            <select id="archive-window-yj-employee-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
                                 <option value="all">📊 Tutti i Dipendenti</option>
                             </select>
                         </div>
                     </div>
-                    <div id="archive-window-weeks-container" class="space-y-6 max-h-[350px] overflow-y-auto pr-2 bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
-                        </div>
+                    <div id="archive-window-yj-weeks-container" class="space-y-6 max-h-[350px] overflow-y-auto pr-2 bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
+                    </div>
                 </div>
             </section>
 
-            <section id="inventory-section" class="hidden space-y-6">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    
-                    <div class="space-y-6 xl:col-span-1">
-                        
-                        <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-                            <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
-                                <i class="fa-solid fa-right-left mr-2"></i> Registra Movimento (Manuale)
-                            </h2>
-                            <form id="inventory-transaction-form" class="space-y-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Dipendente</label>
-                                    <select id="inv-emp-select" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                        <option value="">-- Seleziona --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Oggetto</label>
-                                    <select id="inv-item-select" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                        <option value="">-- Seleziona Oggetto --</option>
-                                    </select>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Azione</label>
-                                        <select id="inv-action" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                            <option value="preleva">Preleva 📤</option>
-                                            <option value="deposita">Deposita 📥</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Quantità</label>
-                                        <input type="number" id="inv-qty" value="1" min="1" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Motivo (Opzionale ma consigliato)</label>
-                                    <input type="text" id="inv-reason" placeholder="Es. Lavoro in corso, Reso..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                </div>
-                                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20">
-                                    Conferma Movimento
-                                </button>
-                            </form>
-                        </div>
+            <!-- ========== SEZIONE VENDITE FENICI ========== -->
+            <section id="sales-fen-section" class="hidden space-y-6">
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
+                        <i class="fa-solid fa-bolt mr-2 text-yellow-300"></i> Azioni Rapide Vendita - Fenici
+                    </h2>
+                    <p class="text-gray-400 text-xs mb-4">Clicca su un servizio per aprire il terminale rapido ed effettuare la registrazione.</p>
+                    <div id="quick-sales-fen-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 max-h-[280px] overflow-y-auto pr-1">
+                    </div>
+                </div>
 
-                        <div id="admin-inventory-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center">
+                            <i class="fa-solid fa-list-check mr-2"></i> Vendite Correnti Fenici (Settimana)
+                        </h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <select id="sales-fen-employee-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                                <option value="all">📊 Tutti i Dipendenti</option>
+                            </select>
+                            <span class="text-xs bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full border border-amber-500/20 whitespace-nowrap">Reset Automatico Domenica</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[280px] overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">
+                                    <th class="pb-3 pt-2">Data</th>
+                                    <th class="pb-3 pt-2">Dipendente</th>
+                                    <th class="pb-3 pt-2">Servizio (Qta)</th>
+                                    <th class="pb-3 pt-2">Totale Incassato</th>
+                                    <th class="pb-3 pt-2">Guadagno Yellow</th>
+                                    <th class="pb-3 pt-2">Spett. Corp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="current-sales-fen-table" class="divide-y divide-gray-700 text-sm">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="manager-sales-archive-fen-section" class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center">
+                            <i class="fa-solid fa-box-archive mr-2"></i> Archivio Storico Vendite Fenici
+                        </h2>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <label class="text-xs font-bold text-gray-400 uppercase mr-1">Filtra:</label>
+                            <select id="archive-window-fen-employee-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                                <option value="all">📊 Tutti i Dipendenti</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="archive-window-fen-weeks-container" class="space-y-6 max-h-[350px] overflow-y-auto pr-2 bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== SEZIONE INVENTARIO YELLOW JACK ========== -->
+            <section id="inventory-yj-section" class="hidden space-y-6">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="space-y-6 xl:col-span-1">
+                        <div id="admin-inventory-yj-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
-                                <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito (Gestore)
+                                <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito YJ (Gestore)
                             </h2>
-                            <form id="inventory-admin-form" class="space-y-4">
+                            <form id="inventory-yj-admin-form" class="space-y-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Nome Oggetto</label>
-                                    <input type="text" id="inv-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <input type="text" id="inv-yj-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Link Foto (URL)</label>
-                                    <input type="url" id="inv-admin-img" placeholder="https://..." required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <input type="url" id="inv-yj-admin-img" placeholder="https://... (opzionale)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Quantità Iniziale</label>
-                                        <input type="number" id="inv-admin-qty" value="0" min="0" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <input type="number" id="inv-yj-admin-qty" value="0" min="0" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Deposito</label>
-                                        <select id="inv-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <select id="inv-yj-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                             <option value="1">Bancone</option>
                                             <option value="2">Frigorifero</option>
                                             <option value="3">Officina</option>
@@ -537,39 +351,38 @@
                                     </div>
                                 </div>
                                 <button type="submit" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg">
-                                    Crea Oggetto
+                                    Crea Oggetto YJ
                                 </button>
                             </form>
                         </div>
                     </div>
 
                     <div class="space-y-6 xl:col-span-2">
-                        
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
-                                    <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi
+                                    <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi Yellow Jack
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                    <input type="text" id="inv-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
-                                    <select id="inv-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                                    <input type="text" id="inv-yj-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
+                                    <select id="inv-yj-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
                                         <option value="all">Tutti i Depositi</option>
-                                            <option value="1">Bancone</option>
-                                            <option value="2">Frigorifero</option>
-                                            <option value="3">Officina</option>
+                                        <option value="1">Bancone</option>
+                                        <option value="2">Frigorifero</option>
+                                        <option value="3">Officina</option>
                                     </select>
                                 </div>
                             </div>
-                            <p class="text-gray-400 text-xs mb-3 italic">Clicca direttamente sulla card dell'oggetto per gestire un prelievo o deposito veloce.</p>
+                            <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
                             <div class="max-h-[300px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-2 bg-gray-900/50">
-                                <div id="inventory-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                    </div>
+                                <div id="inventory-yj-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                </div>
                             </div>
                         </div>
 
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <h2 class="text-lg font-bold text-gray-300 mb-4 flex items-center">
-                                <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti
+                                <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti YJ
                             </h2>
                             <div class="overflow-x-auto max-h-[200px] overflow-y-auto border border-gray-700 rounded-xl">
                                 <table class="w-full text-left text-sm border-collapse">
@@ -582,82 +395,40 @@
                                             <th class="p-3">Motivo</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="inventory-logs-table" class="divide-y divide-gray-700 bg-gray-850">
-                                        </tbody>
+                                    <tbody id="inventory-yj-logs-table" class="divide-y divide-gray-700 bg-gray-850">
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </section>
 
-            <section id="fenici-section" class="hidden space-y-6">
+            <!-- ========== SEZIONE INVENTARIO FENICI ========== -->
+            <section id="inventory-fen-section" class="hidden space-y-6">
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    
                     <div class="space-y-6 xl:col-span-1">
-                        
-                        <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-                            <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center">
-                                <i class="fa-solid fa-right-left mr-2"></i> Registra Movimento (Manuale)
-                            </h2>
-                            <form id="fenici-transaction-form" class="space-y-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Dipendente</label>
-                                    <select id="fen-emp-select" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                        <option value="">-- Seleziona --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Oggetto</label>
-                                    <select id="fen-item-select" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                        <option value="">-- Seleziona Oggetto --</option>
-                                    </select>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Azione</label>
-                                        <select id="fen-action" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                            <option value="preleva">Preleva 📤</option>
-                                            <option value="deposita">Deposita 📥</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Quantità</label>
-                                        <input type="number" id="fen-qty" value="1" min="1" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Motivo (Opzionale ma consigliato)</label>
-                                    <input type="text" id="fen-reason" placeholder="Es. Lavoro in corso, Reso..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
-                                </div>
-                                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-500/20">
-                                    Conferma Movimento
-                                </button>
-                            </form>
-                        </div>
-
-                        <div id="admin-fenici-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
+                        <div id="admin-inventory-fen-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
                             <h2 class="text-lg font-bold text-amber-400 mb-4 flex items-center">
                                 <i class="fa-solid fa-plus-circle mr-2"></i> Aggiungi a Deposito Fenici (Gestore)
                             </h2>
-                            <form id="fenici-admin-form" class="space-y-4">
+                            <form id="inventory-fen-admin-form" class="space-y-4">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Nome Oggetto</label>
-                                    <input type="text" id="fen-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <input type="text" id="inv-fen-admin-name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Link Foto (URL)</label>
-                                    <input type="url" id="fen-admin-img" placeholder="https://..." required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                    <input type="url" id="inv-fen-admin-img" placeholder="https://... (opzionale)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Quantità Iniziale</label>
-                                        <input type="number" id="fen-admin-qty" value="0" min="0" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <input type="number" id="inv-fen-admin-qty" value="0" min="0" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-gray-400 mb-1">Deposito</label>
-                                        <select id="fen-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                        <select id="inv-fen-admin-stash" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
                                             <option value="1">Bancone</option>
                                             <option value="2">Frigorifero</option>
                                             <option value="3">Officina</option>
@@ -672,32 +443,31 @@
                     </div>
 
                     <div class="space-y-6 xl:col-span-2">
-                        
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                 <h2 class="text-xl font-bold text-amber-400 flex items-center">
-                                    <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi (Fenici)
+                                    <i class="fa-solid fa-boxes-stacked mr-2"></i> Giacenza Depositi Fenici
                                 </h2>
                                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                    <input type="text" id="fen-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
-                                    <select id="fen-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                                    <input type="text" id="inv-fen-search-filter" placeholder="Cerca oggetto..." class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500 w-full sm:w-40">
+                                    <select id="inv-fen-stash-filter" class="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-500">
                                         <option value="all">Tutti i Depositi</option>
-                                            <option value="1">Bancone</option>
-                                            <option value="2">Frigorifero</option>
-                                            <option value="3">Officina</option>
+                                        <option value="1">Bancone</option>
+                                        <option value="2">Frigorifero</option>
+                                        <option value="3">Officina</option>
                                     </select>
                                 </div>
                             </div>
-                            <p class="text-gray-400 text-xs mb-3 italic">Clicca direttamente sulla card dell'oggetto per gestire un prelievo o deposito veloce.</p>
+                            <p class="text-gray-400 text-xs mb-3 italic">Clicca sulla card per gestire prelievo/deposito veloce.</p>
                             <div class="max-h-[300px] overflow-y-auto pr-2 rounded-xl border border-gray-700/50 p-2 bg-gray-900/50">
-                                <div id="fenici-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                    </div>
+                                <div id="inventory-fen-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                </div>
                             </div>
                         </div>
 
                         <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                             <h2 class="text-lg font-bold text-gray-300 mb-4 flex items-center">
-                                <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti (Fenici)
+                                <i class="fa-solid fa-clipboard-list mr-2"></i> Registro Movimenti Recenti Fenici
                             </h2>
                             <div class="overflow-x-auto max-h-[200px] overflow-y-auto border border-gray-700 rounded-xl">
                                 <table class="w-full text-left text-sm border-collapse">
@@ -710,36 +480,44 @@
                                             <th class="p-3">Motivo</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="fenici-logs-table" class="divide-y divide-gray-700 bg-gray-850">
-                                        </tbody>
+                                    <tbody id="inventory-fen-logs-table" class="divide-y divide-gray-700 bg-gray-850">
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </section>
 
+            <!-- ========== SEZIONE ADMIN / GESTIONE ========== -->
             <section id="admin-section" class="hidden space-y-8">
                 
+                <!-- Creazione Depositi -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Creazione Depositi Personalizzati</h3>
-                    <p class="text-gray-400 text-xs mb-4">Aggiungi nuovi depositi che saranno disponibili sia nell'Inventario che nelle Fenici.</p>
-                    <form id="stash-form" class="flex flex-col sm:flex-row gap-3">
+                    <p class="text-gray-400 text-xs mb-4">Aggiungi nuovi depositi disponibili sia in Inventario YJ che Fenici.</p>
+                    <form id="stash-form" class="flex flex-col sm:flex-row gap-3 mb-4">
                         <input type="text" id="stash-name" placeholder="Es. Magazzino Retrostante" required class="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                         <button type="submit" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
                             <i class="fa-solid fa-plus mr-1"></i> Crea Deposito
                         </button>
                     </form>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider">Depositi personalizzati attivi</p>
+                        <div id="custom-stashes-list" class="space-y-2 max-h-[160px] overflow-y-auto">
+                            <p class="text-xs text-gray-500 italic">Nessun deposito personalizzato.</p>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Pannello Controllo Dipendente -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-2xl">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                         <div>
                             <h3 class="text-xl font-extrabold text-amber-400 tracking-wide flex items-center">
                                 <i class="fa-solid fa-user-check mr-2 text-2xl"></i> PANNELLO DI CONTROLLO SINGOLO DIPENDENTE
                             </h3>
-                            <p class="text-gray-400 text-xs mt-1">Seleziona un dipendente specifico per isolare i suoi guadagni, verificar i suoi pagamenti o archiviare la sua settimana singola.</p>
+                            <p class="text-gray-400 text-xs mt-1">Seleziona un dipendente per isolare guadagni, verificare pagamenti o archiviare la sua settimana.</p>
                         </div>
                         <div class="w-full md:w-72">
                             <label class="block text-xs font-bold text-gray-300 uppercase mb-1 tracking-wider">Filtra Staff</label>
@@ -785,6 +563,7 @@
                                 <thead>
                                     <tr class="border-b border-gray-800 text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-900 z-10">
                                         <th class="pb-2">Data</th>
+                                        <th class="pb-2">Attività</th>
                                         <th class="pb-2">Servizio/Oggetto</th>
                                         <th class="pb-2">Quantità</th>
                                         <th class="pb-2">Incassato Lordo</th>
@@ -799,60 +578,141 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Catalogo Yellow Jack -->
                     <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-                        <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-box-open mr-2"></i> Gestione Catalogo/Servizi (Costi impostati qui)</h3>
-                        <form id="catalog-form" class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
-                            <input type="hidden" id="catalog-id">
+                        <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-box-open mr-2"></i> Catalogo Servizi Yellow Jack</h3>
+                        <form id="catalog-yj-form" class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+                            <input type="hidden" id="catalog-yj-id">
                             <div class="sm:col-span-2">
-                                <input type="text" id="catalog-name" placeholder="Nome Servizio" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <input type="text" id="catalog-yj-name" placeholder="Nome Servizio" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <input type="number" step="0.01" id="catalog-price" placeholder="Prezzo Tot (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <input type="number" step="0.01" id="catalog-yj-price" placeholder="Prezzo Tot (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <input type="number" step="0.01" id="catalog-cost" placeholder="Costo Yellow (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <input type="number" step="0.01" id="catalog-yj-cost" placeholder="Costo Yellow (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div class="sm:col-span-4">
-                                <button type="submit" id="catalog-submit-btn" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition">
-                                    Aggiungi al Catalogo
+                                <button type="submit" id="catalog-yj-submit-btn" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition">
+                                    Aggiungi al Catalogo YJ
                                 </button>
                             </div>
                         </form>
                         <div class="max-h-[140px] overflow-y-auto border border-gray-700 rounded-xl">
                             <table class="w-full text-left text-xs">
-                                <tbody id="catalog-table-body" class="divide-y divide-gray-700 bg-gray-850">
+                                <tbody id="catalog-yj-table-body" class="divide-y divide-gray-700 bg-gray-850">
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
+                    <!-- Catalogo Fenici -->
                     <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-                        <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-users mr-2"></i> Gestione Dipendenti</h3>
-                        <form id="employee-form" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-                            <div>
-                                <input type="text" id="emp-name" placeholder="Nome" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                        <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-box-open mr-2"></i> Catalogo Servizi Fenici</h3>
+                        <form id="catalog-fen-form" class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+                            <input type="hidden" id="catalog-fen-id">
+                            <div class="sm:col-span-2">
+                                <input type="text" id="catalog-fen-name" placeholder="Nome Servizio" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <input type="text" id="emp-rank" placeholder="Grado" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <input type="number" step="0.01" id="catalog-fen-price" placeholder="Prezzo Tot (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <input type="number" id="emp-percentage" placeholder="% Pers. (es. 45)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                                <input type="number" step="0.01" id="catalog-fen-cost" placeholder="Costo Yellow (€)" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
                             </div>
-                            <div class="sm:col-span-3">
-                                <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition">
-                                    Registra Nuovo Dipendente
+                            <div class="sm:col-span-4">
+                                <button type="submit" id="catalog-fen-submit-btn" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition">
+                                    Aggiungi al Catalogo Fenici
                                 </button>
                             </div>
                         </form>
                         <div class="max-h-[140px] overflow-y-auto border border-gray-700 rounded-xl">
                             <table class="w-full text-left text-xs">
-                                <tbody id="employee-table-body" class="divide-y divide-gray-700">
+                                <tbody id="catalog-fen-table-body" class="divide-y divide-gray-700 bg-gray-850">
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
+                <!-- Gestione Dipendenti (con login, psw e ruoli) -->
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-users mr-2"></i> Gestione Dipendenti (Login + Ruoli)</h3>
+                    <p class="text-gray-400 text-xs mb-4">Crea dipendenti con codice login, password e seleziona le pagine che possono visualizzare. Solo il Gestore gestisce questi dati.</p>
+                    <form id="employee-form" class="space-y-4 mb-4">
+                        <input type="hidden" id="emp-id" value="">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Nome</label>
+                                <input type="text" id="emp-name" placeholder="Nome completo" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Grado / Ruolo</label>
+                                <input type="text" id="emp-rank" placeholder="es. Capo, Associato, Soldato..." required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">% Personale (opz.)</label>
+                                <input type="number" id="emp-percentage" placeholder="es. 45 (default 40)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Codice Login</label>
+                                <input type="text" id="emp-login" placeholder="es. mario.rossi" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Password</label>
+                                <input type="text" id="emp-password" placeholder="Password accesso" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-2">Pagine visibili (permessi)</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="role-sales-yj" class="rounded text-amber-500 focus:ring-amber-500" checked>
+                                    <span class="text-xs text-gray-200">Vendite Yellow Jack</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="role-sales-fen" class="rounded text-amber-500 focus:ring-amber-500">
+                                    <span class="text-xs text-gray-200">Vendite Fenici</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="role-inv-yj" class="rounded text-amber-500 focus:ring-amber-500" checked>
+                                    <span class="text-xs text-gray-200">Inventario Yellow Jack</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="role-inv-fen" class="rounded text-amber-500 focus:ring-amber-500">
+                                    <span class="text-xs text-gray-200">Inventario Fenici</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="submit" id="emp-submit-btn" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition">
+                                <i class="fa-solid fa-user-plus mr-1"></i> Registra Nuovo Dipendente
+                            </button>
+                            <button type="button" id="emp-cancel-edit-btn" class="hidden px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium text-sm rounded-xl transition">
+                                Annulla modifica
+                            </button>
+                        </div>
+                    </form>
+                    <div class="max-h-[240px] overflow-y-auto border border-gray-700 rounded-xl">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 uppercase sticky top-0 bg-gray-800 z-10">
+                                    <th class="p-2">Nome</th>
+                                    <th class="p-2">Grado</th>
+                                    <th class="p-2">Login</th>
+                                    <th class="p-2">Password</th>
+                                    <th class="p-2">%</th>
+                                    <th class="p-2">Pagine</th>
+                                    <th class="p-2 text-right">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employee-table-body" class="divide-y divide-gray-700">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Stipendi -->
                 <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <h3 class="text-lg font-bold text-amber-400 mb-4"><i class="fa-solid fa-wallet mr-2"></i> Calcolo Stipendi Correnti & Stato Pagamento Staff</h3>
                     <div class="overflow-x-auto max-h-[180px] overflow-y-auto">
@@ -860,7 +720,6 @@
                             <thead>
                                 <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase sticky top-0 bg-gray-800 z-10">
                                     <th class="pb-2">Dipendente</th>
-                                    <th class="pb-2">Grado</th>
                                     <th class="pb-2">N. Vendite</th>
                                     <th class="pb-2">% Applicata</th>
                                     <th class="pb-2">Stipendio Maturato (€)</th>
@@ -868,15 +727,16 @@
                                 </tr>
                             </thead>
                             <tbody id="salary-table-body" class="divide-y divide-gray-700">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>
 
+                <!-- Archivio storico -->
                 <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <h3 class="text-lg font-bold text-gray-400 mb-4"><i class="fa-solid fa-box-archive mr-2"></i> Archivio Storico Settimanale & Stato Pagamenti Passati</h3>
                     <div id="archive-container" class="space-y-4 max-h-[220px] overflow-y-auto pr-1">
-                        </div>
+                    </div>
                 </div>
             </section>
         </main>
@@ -885,7 +745,7 @@
     <footer class="relative z-10 bg-gray-950 text-gray-400 text-xs py-6 mt-12 border-t border-gray-800">
         <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
             <div class="flex items-center space-x-2">
-                <p>&copy; 2026 <span class="text-amber-400 font-semibold tracking-wider">YELLOW JACK - HORDE RP</span>. Vitrio - Tutti i diritti riservati.</p>
+                <p>&copy; 2026 <span class="text-amber-400 font-semibold tracking-wider">FENICI-HORDE</span>. Vitrio - Tutti i diritti riservati.</p>
             </div>
             <div class="flex space-x-6 text-gray-500">
                 <span><i class="fa-solid fa-shield-halved mr-1 text-amber-500/50"></i> Database Online</span>
@@ -897,1868 +757,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <script>
-        // --- CONFIGURAZIONE FIREBASE ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyA9Rhp0NHzR5QbrbmzwYh9yOq1nkQwNqLc",
-          authDomain: "yellow-horde.firebaseapp.com",
-          projectId: "yellow-horde",
-          storageBucket: "yellow-horde.firebasestorage.app",
-          messagingSenderId: "180811964772",
-          appId: "1:180811964772:web:166c0fb04a26449c259a71",
-          measurementId: "G-0TBYXB61LD"
-        };
-
-        // Inizializzazione Firebase Sicura
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore(); 
-
-        // Stato Globale Applicazione
-        let currentUser = null;
-        let userRole = 'dipendente'; 
-        let localCatalog = {};
-        let localEmployees = {};
-        let localSales = {};
-        let localSalariesStatus = {}; 
-        let localInventory = {};
-        let localInventoryLogs = [];
-        let localFenici = {};
-        let localFeniciLogs = [];
-        let localStashes = {}; // Contiene i depositi aggiuntivi personalizzati
-        let localArchive = {}; // Struttura ad albero globale per contenere l'archivio storico
-
-        // Elementi DOM Principali
-        const loginPage = document.getElementById('login-page');
-        const mainDashboard = document.getElementById('main-dashboard');
-        const loginForm = document.getElementById('login-form');
-        const roleBadge = document.getElementById('role-badge');
-        
-        // Bottoni e Sezioni Navigazione
-        const navSalesBtn = document.getElementById('nav-sales-btn');
-        const navInventoryBtn = document.getElementById('nav-inventory-btn');
-        const navFeniciBtn = document.getElementById('nav-fenici-btn');
-        const navAdminBtn = document.getElementById('nav-admin-btn');
-        const salesSection = document.getElementById('sales-section');
-        const inventorySection = document.getElementById('inventory-section');
-        const feniciSection = document.getElementById('fenici-section');
-        const adminSection = document.getElementById('admin-section');
-        
-        const logoutBtn = document.getElementById('logout-btn');
-        const adminEmployeeFilter = document.getElementById('admin-employee-filter');
-        const salesEmployeeFilter = document.getElementById('sales-employee-filter');
-        const archiveWindowEmployeeFilter = document.getElementById('archive-window-employee-filter');
-
-        // Gestione fallimento immagini locale senza errori in console
-        const imgLogin = document.getElementById('login-main-logo');
-        const imgNav = document.getElementById('nav-main-logo');
-        if(imgLogin) imgLogin.onerror = function() { this.style.display='none'; };
-        if(imgNav) imgNav.onerror = function() { this.style.display='none'; };
-
-        // --- UTILS: FORMATTAZIONE VALUTE IN FORMATO ITALIANO ---
-        function formatValuta(valore) {
-            if(isNaN(valore) || valore === null) valore = 0;
-            return "€ " + valore.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        // Calcola il timestamp esatto del Lunedì della settimana corrente a mezzanotte (00:00:00)
-        function getStartOfCurrentWeek() {
-            const now = new Date();
-            const currentDay = now.getDay(); 
-            const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
-            const monday = new Date(now);
-            monday.setDate(now.getDate() - distanceToMonday);
-            monday.setHours(0, 0, 0, 0);
-            return monday.getTime();
-        }
-
-        // Recupera nome del deposito (Statico o Dinamico)
-        function getStashName(stashId) {
-            if(stashId === "1") return "Bancone";
-            if(stashId === "2") return "Frigorifero";
-            if(stashId === "3") return "Officina";
-            if(localStashes[stashId]) return localStashes[stashId].name;
-            return stashId;
-        }
-
-        // --- SISTEMA DI NOTIFICHE TOAST PERSONALIZZATE ---
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if(!container) return;
-            const toast = document.createElement('div');
-            
-            let bgClass = 'bg-emerald-600 border-emerald-500';
-            let iconClass = 'fa-circle-check';
-            
-            if (type === 'error') {
-                bgClass = 'bg-red-600 border-red-500';
-                iconClass = 'fa-circle-exclamation';
-            } else if (type === 'info') {
-                bgClass = 'bg-indigo-600 border-indigo-500';
-                iconClass = 'fa-circle-info';
-            } else if (type === 'warning') {
-                bgClass = 'bg-amber-500 border-amber-400 text-gray-900';
-                iconClass = 'fa-triangle-exclamation';
-            }
-
-            toast.className = `flex items-center p-4 rounded-xl border shadow-2xl text-white ${bgClass} transform transition-all duration-300 -translate-y-2 opacity-0 text-sm font-medium`;
-            toast.innerHTML = `
-                <i class="fa-solid ${iconClass} text-lg mr-3 shrink-0"></i>
-                <div class="flex-1">${message}</div>
-                <button class="ml-3 hover:opacity-70 transition text-current" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
-            `;
-            
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.remove('-translate-y-2', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', '-translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 4000);
-        }
-
-        // --- INTERFACCIA DI CONFERMA POPUP MODAL CENTRATO ---
-        let modalCallback = null;
-        function showConfirmModal(title, message, onConfirm, isDangerous = true) {
-            const modal = document.getElementById('custom-modal');
-            const box = document.getElementById('modal-box');
-            
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').textContent = message;
-            
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            const icon = document.getElementById('modal-icon');
-
-            if (isDangerous) {
-                confirmBtn.className = "px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm transition";
-                icon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400";
-            } else {
-                confirmBtn.className = "px-4 py-2 bg-amber-500 hover:bg-amber-600 text-gray-900 rounded-xl font-bold text-sm transition";
-                icon.className = "fa-solid fa-circle-question text-2xl text-amber-400";
-            }
-
-            modalCallback = onConfirm;
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                box.classList.remove('scale-95', 'opacity-0');
-                box.classList.add('scale-100', 'opacity-100');
-            }, 10);
-        }
-
-        function closeConfirmModal() {
-            const modal = document.getElementById('custom-modal');
-            const box = document.getElementById('modal-box');
-            box.classList.remove('scale-100', 'opacity-100');
-            box.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalCallback = null;
-            }, 200);
-        }
-
-        document.getElementById('modal-cancel-btn').addEventListener('click', closeConfirmModal);
-        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
-            if (modalCallback) modalCallback();
-            closeConfirmModal();
-        });
-
-
-        // --- LOGICA SMART ACTION MODAL ---
-        window.openSmartModal = function(type, itemId) {
-            const modal = document.getElementById('smart-action-modal');
-            const box = document.getElementById('smart-modal-box');
-            
-            // Popola Dropdown Dipendenti Smart Modal
-            const empSelect = document.getElementById('smart-modal-employee');
-            empSelect.innerHTML = '<option value="">-- Seleziona Operatore --</option>';
-            Object.keys(localEmployees).forEach(key => {
-                empSelect.innerHTML += `<option value="${key}">${localEmployees[key].name} (${localEmployees[key].rank})</option>`;
-            });
-
-            // Reset campi e imposta tipo operazione
-            document.getElementById('smart-modal-form').reset();
-            document.getElementById('smart-modal-type').value = type;
-            document.getElementById('smart-modal-item-id').value = itemId || '';
-            
-            // Nascondi contenitori specifici di default
-            document.getElementById('smart-modal-action-container').classList.add('hidden');
-            document.getElementById('smart-modal-custom-name-container').classList.add('hidden');
-            document.getElementById('smart-modal-price-container').classList.add('hidden');
-            document.getElementById('smart-modal-reason-container').classList.add('hidden');
-            
-            const titleEl = document.getElementById('smart-modal-title');
-            const submitBtn = document.getElementById('smart-modal-submit');
-            const priceInput = document.getElementById('smart-modal-price');
-            const qtyInput = document.getElementById('smart-modal-quantity');
-
-            qtyInput.value = "1";
-
-            if (type === 'inv' || type === 'fen') {
-                const item = type === 'inv' ? localInventory[itemId] : localFenici[itemId];
-                if(!item) return;
-                titleEl.innerHTML = `<i class="fa-solid fa-boxes-stacked mr-2"></i> Gestisci: <span class="text-white">${item.name}</span>`;
-                document.getElementById('smart-modal-action-container').classList.remove('hidden');
-                document.getElementById('smart-modal-reason-container').classList.remove('hidden');
-                submitBtn.textContent = "Conferma Movimento";
-                submitBtn.className = "w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition transform active:scale-95 shadow-lg mt-4";
-            } 
-            else if (type === 'sale_catalog') {
-                const item = localCatalog[itemId];
-                if(!item) return;
-                titleEl.innerHTML = `<i class="fa-solid fa-cash-register mr-2"></i> Vendi: <span class="text-white">${item.name}</span>`;
-                document.getElementById('smart-modal-price-container').classList.remove('hidden');
-                document.getElementById('smart-modal-price-label').textContent = "Prezzo Unitario (€)";
-                priceInput.value = item.price;
-                priceInput.disabled = true;
-                submitBtn.textContent = "Registra Vendita";
-                submitBtn.className = "w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-extrabold rounded-xl transition transform active:scale-95 shadow-lg mt-4";
-            }
-            else if (type === 'sale_custom') {
-                titleEl.innerHTML = `<i class="fa-solid fa-bolt mr-2"></i> Nuova Vendita Libera`;
-                document.getElementById('smart-modal-custom-name-container').classList.remove('hidden');
-                document.getElementById('smart-modal-price-container').classList.remove('hidden');
-                document.getElementById('smart-modal-price-label').textContent = "Costo Totale (€)";
-                priceInput.value = '';
-                priceInput.disabled = false;
-                submitBtn.textContent = "Registra Vendita";
-                submitBtn.className = "w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-extrabold rounded-xl transition transform active:scale-95 shadow-lg mt-4";
-            }
-
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                box.classList.remove('scale-95', 'opacity-0');
-                box.classList.add('scale-100', 'opacity-100');
-            }, 10);
-        };
-        
-        window.closeSmartModal = function() {
-            const modal = document.getElementById('smart-action-modal');
-            const box = document.getElementById('smart-modal-box');
-            box.classList.remove('scale-100', 'opacity-100');
-            box.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 200);
-        };
-
-        // Gestione Submit dello Smart Action Modal
-        document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const type = document.getElementById('smart-modal-type').value;
-            const itemId = document.getElementById('smart-modal-item-id').value;
-            const empId = document.getElementById('smart-modal-employee').value;
-            const qty = parseInt(document.getElementById('smart-modal-quantity').value) || 1;
-            
-            if(!empId) {
-                showToast("Seleziona il tuo nome prima di procedere!", "warning");
-                return;
-            }
-
-            // Logica Inventario / Fenici
-            if (type === 'inv' || type === 'fen') {
-                const action = document.getElementById('smart-modal-action').value;
-                const reason = document.getElementById('smart-modal-reason').value.trim();
-                const collectionItems = type === 'inv' ? 'inventory_items' : 'fenici_items';
-                const collectionLogs = type === 'inv' ? 'inventory_logs' : 'fenici_logs';
-                const localData = type === 'inv' ? localInventory : localFenici;
-                
-                const item = localData[itemId];
-                if(!item) return;
-
-                let newQty = item.quantity;
-                if(action === 'preleva') {
-                    if(qty > item.quantity) {
-                        showToast(`Impossibile prelevare ${qty}, quantità disponibile: ${item.quantity}.`, "error");
-                        return;
-                    }
-                    newQty -= qty;
-                } else {
-                    newQty += qty;
-                }
-
-                const empName = localEmployees[empId] ? localEmployees[empId].name : 'Dipendente';
-
-                const batch = db.batch();
-                const itemRef = db.collection(collectionItems).doc(itemId);
-                const logRef = db.collection(collectionLogs).doc();
-
-                batch.update(itemRef, { quantity: newQty });
-                batch.set(logRef, {
-                    timestamp: Date.now(),
-                    dateString: new Date().toLocaleString('it-IT'),
-                    employeeId: empId,
-                    employeeName: empName,
-                    itemId: itemId,
-                    itemName: item.name,
-                    action: action,
-                    quantity: qty,
-                    reason: reason
-                });
-
-                batch.commit().then(() => {
-                    closeSmartModal();
-                    showToast(`Movimento rapido completato (${type === 'inv' ? 'Inventario' : 'Fenici'})!`, "success");
-                }).catch(err => showToast("Errore di sincronizzazione: " + err.message, "error"));
-
-            // Logica Vendite Smart (Catalogo o Libera)
-            } else if (type === 'sale_catalog' || type === 'sale_custom') {
-                let saleData = {
-                    timestamp: Date.now(),
-                    dateString: new Date().toLocaleString('it-IT'),
-                    employeeKey: empId,
-                    employeeName: localEmployees[empId].name,
-                    employeeRank: localEmployees[empId].rank,
-                    quantity: qty
-                };
-
-                const empPct = localEmployees[empId].customPercentage ? parseFloat(localEmployees[empId].customPercentage) : 40;
-                saleData.appliedPercentage = empPct;
-
-                if (type === 'sale_custom') {
-                    const name = document.getElementById('smart-modal-custom-name').value.trim();
-                    const totalCostInput = parseFloat(document.getElementById('smart-modal-price').value);
-
-                    if (!name || isNaN(totalCostInput)) {
-                        showToast("Compila i campi del servizio e verifica l'importo totale.", "warning");
-                        return;
-                    }
-
-                    const finalTotalPrice = totalCostInput * qty;
-                    const calculatedYellowCost = 0; 
-                    const yellowGain = finalTotalPrice - calculatedYellowCost;
-                    const employeeGain = (yellowGain * empPct) / 100;
-
-                    saleData.serviceName = "[LIBERO] " + name;
-                    saleData.totalPrice = finalTotalPrice;
-                    saleData.yellowCost = calculatedYellowCost;
-                    saleData.yellowGain = yellowGain;
-                    saleData.employeeGain = employeeGain;
-                } else {
-                    const item = localCatalog[itemId];
-                    const finalTotalPrice = item.price * qty;
-                    const finalYellowCost = (item.cost || 0) * qty; 
-                    const yellowGain = finalTotalPrice - finalYellowCost;
-                    const employeeGain = (yellowGain * empPct) / 100;
-
-                    saleData.serviceName = item.name;
-                    saleData.totalPrice = finalTotalPrice;
-                    saleData.yellowCost = finalYellowCost;
-                    saleData.yellowGain = yellowGain;
-                    saleData.employeeGain = employeeGain;
-                }
-
-                db.collection('current_sales').add(saleData)
-                    .then(() => {
-                        closeSmartModal();
-                        showToast("Vendita rapida registrata con successo!", "success");
-                    })
-                    .catch(err => showToast("Errore di scrittura: " + err.message, "error"));
-            }
-        });
-
-
-        // --- AUTENTICAZIONE E RUOLI ---
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value;
-
-            auth.signInWithEmailAndPassword(email, password)
-                .then(() => {
-                    showToast("Accesso effettuato con successo!", "success");
-                })
-                .catch(err => showToast("Errore di accesso: " + err.message, "error"));
-        });
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
-                if (user.email === 'yellow.gestore@horde.it') {
-                    userRole = 'gestore';
-                } else {
-                    userRole = 'dipendente';
-                }
-                
-                setupUIForRole();
-                initDatabaseListeners();
-                loginPage.classList.add('hidden');
-                mainDashboard.classList.remove('hidden');
-            } else {
-                currentUser = null;
-                loginPage.classList.remove('hidden');
-                mainDashboard.classList.add('hidden');
-            }
-        });
-
-        logoutBtn.addEventListener('click', () => {
-            auth.signOut().then(() => {
-                window.location.reload();
-            });
-        });
-
-        function setupUIForRole() {
-            roleBadge.textContent = userRole.toUpperCase();
-            const adminInvControls = document.getElementById('admin-inventory-controls');
-            const adminFeniciControls = document.getElementById('admin-fenici-controls');
-            const managerSalesArchiveSection = document.getElementById('manager-sales-archive-section');
-
-            if (userRole === 'gestore') {
-                roleBadge.className = "px-3 py-1 bg-amber-500/20 text-xs font-semibold rounded-full text-amber-400 border border-amber-500/30";
-                navAdminBtn.classList.remove('hidden');
-                if(adminInvControls) adminInvControls.classList.remove('hidden');
-                if(adminFeniciControls) adminFeniciControls.classList.remove('hidden');
-                if(salesEmployeeFilter) salesEmployeeFilter.classList.remove('hidden');
-                if(managerSalesArchiveSection) managerSalesArchiveSection.classList.remove('hidden');
-            } else {
-                roleBadge.className = "px-3 py-1 bg-blue-500/20 text-xs font-semibold rounded-full text-blue-400 border border-blue-500/30";
-                navAdminBtn.classList.add('hidden');
-                if(adminInvControls) adminInvControls.classList.add('hidden');
-                if(adminFeniciControls) adminFeniciControls.classList.add('hidden');
-                if(salesEmployeeFilter) salesEmployeeFilter.classList.add('hidden');
-                if(managerSalesArchiveSection) managerSalesArchiveSection.classList.add('hidden');
-                showSection('sales');
-            }
-        }
-
-        // --- SISTEMA DI NAVIGAZIONE TAB ---
-        navSalesBtn.addEventListener('click', () => showSection('sales'));
-        navInventoryBtn.addEventListener('click', () => showSection('inventory'));
-        navFeniciBtn.addEventListener('click', () => showSection('fenici'));
-        navAdminBtn.addEventListener('click', () => {
-            if (userRole === 'gestore') {
-                showSection('admin');
-            } else {
-                showToast("Accesso negato. Area riservata all'Amministrazione.", "error");
-                showSection('sales');
-            }
-        });
-
-        function showSection(section) {
-            salesSection.classList.add('hidden');
-            inventorySection.classList.add('hidden');
-            feniciSection.classList.add('hidden');
-            adminSection.classList.add('hidden');
-            
-            navSalesBtn.className = "px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600";
-            navInventoryBtn.className = "px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600";
-            navFeniciBtn.className = "px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600";
-            navAdminBtn.className = "hidden px-4 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600";
-            
-            if (userRole === 'gestore') navAdminBtn.classList.remove('hidden');
-
-            if (section === 'sales') {
-                salesSection.classList.remove('hidden');
-                navSalesBtn.className = "px-4 py-2 rounded-xl bg-amber-500 text-gray-900 font-medium transition";
-            } else if (section === 'inventory') {
-                inventorySection.classList.remove('hidden');
-                navInventoryBtn.className = "px-4 py-2 rounded-xl bg-amber-500 text-gray-900 font-medium transition";
-            } else if (section === 'fenici') {
-                feniciSection.classList.remove('hidden');
-                navFeniciBtn.className = "px-4 py-2 rounded-xl bg-amber-500 text-gray-900 font-medium transition";
-            } else if (section === 'admin' && userRole === 'gestore') {
-                adminSection.classList.remove('hidden');
-                navAdminBtn.className = "px-4 py-2 rounded-xl bg-amber-500 text-gray-900 font-medium transition";
-            }
-        }
-
-        // --- ASCOLTO DATI FIRESTORE ---
-        function initDatabaseListeners() {
-            // Depositi Dinamici
-            db.collection('custom_stashes').onSnapshot(snapshot => {
-                localStashes = {};
-                snapshot.forEach(doc => { localStashes[doc.id] = doc.data(); });
-                renderStashDropdowns();
-                renderInventoryGrid(); // Aggiorna nomi deposito
-                renderFeniciGrid(); // Aggiorna nomi deposito
-            });
-
-            db.collection('catalog').onSnapshot(snapshot => {
-                localCatalog = {};
-                snapshot.forEach(doc => { localCatalog[doc.id] = doc.data(); });
-                renderCatalog();
-                renderSalesDropdowns();
-                renderQuickSalesGrid(); // Aggiorna la griglia delle vendite rapide
-            }, error => { showToast("Errore lettore Catalogo: " + error.message, "error"); });
-
-            db.collection('employees').onSnapshot(snapshot => {
-                localEmployees = {};
-                snapshot.forEach(doc => { localEmployees[doc.id] = doc.data(); });
-                renderEmployees();
-                renderSalesDropdowns();
-                renderAdminFilterDropdown();
-            }, error => { showToast("Errore lettore Dipendenti: " + error.message, "error"); });
-
-            db.collection('current_salaries_status').onSnapshot(snapshot => {
-                localSalariesStatus = {};
-                snapshot.forEach(doc => { localSalariesStatus[doc.id] = doc.data().status || 'non_pagato'; });
-                if (userRole === 'gestore') calculateManagementData();
-            });
-
-            db.collection('current_sales').onSnapshot(snapshot => {
-                localSales = {};
-                snapshot.forEach(doc => { localSales[doc.id] = doc.data(); });
-                renderSalesTable();
-                if (userRole === 'gestore') calculateManagementData();
-            }, error => { showToast("Errore lettore Vendite: " + error.message, "error"); });
-
-            // INVENTARIO: Oggetti
-            db.collection('inventory_items').onSnapshot(snapshot => {
-                localInventory = {};
-                snapshot.forEach(doc => { localInventory[doc.id] = doc.data(); });
-                renderInventoryGrid();
-                renderInventoryDropdowns();
-            }, error => { showToast("Errore lettore Inventario: " + error.message, "error"); });
-
-            // INVENTARIO: Logs (ultimi 50)
-            db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-                localInventoryLogs = [];
-                snapshot.forEach(doc => { localInventoryLogs.push({id: doc.id, ...doc.data()}); });
-                renderInventoryLogs();
-            }, error => { showToast("Errore lettore Log Inventario: " + error.message, "error"); });
-
-            // FENICI: Oggetti
-            db.collection('fenici_items').onSnapshot(snapshot => {
-                localFenici = {};
-                snapshot.forEach(doc => { localFenici[doc.id] = doc.data(); });
-                renderFeniciGrid();
-                renderFeniciDropdowns();
-            }, error => { showToast("Errore lettore Fenici: " + error.message, "error"); });
-
-            // FENICI: Logs (ultimi 50)
-            db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-                localFeniciLogs = [];
-                snapshot.forEach(doc => { localFeniciLogs.push({id: doc.id, ...doc.data()}); });
-                renderFeniciLogs();
-            }, error => { showToast("Errore lettore Log Fenici: " + error.message, "error"); });
-
-            if (userRole === 'gestore') {
-                db.collection('archive').onSnapshot(snapshot => {
-                    localArchive = {};
-                    snapshot.forEach(doc => { localArchive[doc.id] = doc.data(); });
-                    renderArchive(localArchive);
-                    renderSalesArchiveWindow(localArchive); // Aggiorna anche la nuova finestra sotto Vendite
-                });
-            }
-        }
-
-        // --- PROTEZIONE INTERFACCIA ---
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        document.onkeydown = function(e) {
-            if (e.keyCode == 123) return false; 
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; 
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
-        };
-
-        setInterval(function() {
-            debugger;
-        }, 100);
-
-        // --- GESTIONE DEPOSITI DINAMICI (DROPDOWNS) ---
-        function renderStashDropdowns() {
-            const selectsAdmin = [
-                document.getElementById('inv-admin-stash'),
-                document.getElementById('fen-admin-stash')
-            ];
-            const selectsFilter = [
-                document.getElementById('inv-stash-filter'),
-                document.getElementById('fen-stash-filter')
-            ];
-
-            const baseOptionsAdmin = `
-                <option value="1">Bancone</option>
-                <option value="2">Frigorifero</option>
-                <option value="3">Officina</option>
-            `;
-            const baseOptionsFilter = `
-                <option value="all">Tutti i Depositi</option>
-                <option value="1">Bancone</option>
-                <option value="2">Frigorifero</option>
-                <option value="3">Officina</option>
-            `;
-
-            let customOptions = '';
-            Object.keys(localStashes).forEach(key => {
-                customOptions += `<option value="${key}">${localStashes[key].name}</option>`;
-            });
-
-            selectsAdmin.forEach(select => {
-                if (select) {
-                    const currentVal = select.value;
-                    select.innerHTML = baseOptionsAdmin + customOptions;
-                    if(currentVal) select.value = currentVal;
-                }
-            });
-
-            selectsFilter.forEach(select => {
-                if (select) {
-                    const currentVal = select.value;
-                    select.innerHTML = baseOptionsFilter + customOptions;
-                    if(currentVal) select.value = currentVal;
-                }
-            });
-        }
-
-        // --- CREAZIONE NUOVO DEPOSITO (ADMIN) ---
-        const stashForm = document.getElementById('stash-form');
-        if(stashForm) {
-            stashForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('stash-name').value.trim();
-                db.collection('custom_stashes').add({ name: name })
-                    .then(() => {
-                        stashForm.reset();
-                        showToast("Nuovo deposito creato con successo!", "success");
-                    })
-                    .catch(err => showToast("Errore: " + err.message, "error"));
-            });
-        }
-
-
-        // --- DROPDOWN CONDIVISI (VENDITA, INVENTARIO, FENICI) ---
-        const saleEmployeeSelect = document.getElementById('sale-employee');
-        const saleServiceSelect = document.getElementById('sale-service-select');
-        const customNameField = document.getElementById('custom-name-field');
-        const saleQuantityInput = document.getElementById('sale-quantity');
-        const saleCustomPriceInput = document.getElementById('sale-custom-price');
-        const priceLabelText = document.getElementById('price-label-text');
-        
-        const invEmpSelect = document.getElementById('inv-emp-select');
-        const fenEmpSelect = document.getElementById('fen-emp-select');
-
-        if(saleServiceSelect) {
-            saleServiceSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'custom') {
-                    customNameField.classList.remove('hidden');
-                    saleCustomPriceInput.disabled = false;
-                    saleCustomPriceInput.value = "";
-                    priceLabelText.textContent = "Costo Totale (€)";
-                } else {
-                    customNameField.classList.add('hidden');
-                    const item = localCatalog[e.target.value];
-                    saleCustomPriceInput.disabled = true;
-                    priceLabelText.textContent = "Costo Unitario Preimpostato (€)";
-                    if (item) saleCustomPriceInput.value = item.price;
-                }
-            });
-        }
-
-        function renderSalesDropdowns() {
-            let empOptions = '<option value="">-- Seleziona Operatore --</option>';
-            Object.keys(localEmployees).forEach(key => {
-                empOptions += `<option value="${key}">${localEmployees[key].name} (${localEmployees[key].rank})</option>`;
-            });
-            if(saleEmployeeSelect) saleEmployeeSelect.innerHTML = empOptions;
-            if(invEmpSelect) invEmpSelect.innerHTML = empOptions;
-            if(fenEmpSelect) fenEmpSelect.innerHTML = empOptions;
-
-            if(saleServiceSelect) {
-                saleServiceSelect.innerHTML = '<option value="custom">-- VENDITA LIBERA --</option>';
-                Object.keys(localCatalog).forEach(key => {
-                    const item = localCatalog[key];
-                    saleServiceSelect.innerHTML += `<option value="${key}">${item.name} (${formatValuta(item.price)})</option>`;
-                });
-            }
-        }
-
-        function renderAdminFilterDropdown() {
-            if(adminEmployeeFilter) {
-                const currentSelection = adminEmployeeFilter.value;
-                adminEmployeeFilter.innerHTML = '<option value="all">📊 MOSTRA TUTTO LO STAFF</option>';
-                Object.keys(localEmployees).forEach(key => {
-                    adminEmployeeFilter.innerHTML += `<option value="${key}">👤 ${localEmployees[key].name} [${localEmployees[key].rank}]</option>`;
-                });
-                adminEmployeeFilter.value = currentSelection;
-            }
-
-            if(salesEmployeeFilter) {
-                const currentSalesSelection = salesEmployeeFilter.value;
-                salesEmployeeFilter.innerHTML = '<option value="all">📊 Tutti i Dipendenti</option>';
-                Object.keys(localEmployees).forEach(key => {
-                    salesEmployeeFilter.innerHTML += `<option value="${key}">👤 ${localEmployees[key].name}</option>`;
-                });
-                salesEmployeeFilter.value = currentSalesSelection || "all";
-            }
-
-            // Popola il dropdown per la nuova finestra dell'archivio storico sotto vendite
-            if(archiveWindowEmployeeFilter) {
-                const currentArchiveSelection = archiveWindowEmployeeFilter.value;
-                archiveWindowEmployeeFilter.innerHTML = '<option value="all">📊 Tutti i Dipendenti</option>';
-                Object.keys(localEmployees).forEach(key => {
-                    archiveWindowEmployeeFilter.innerHTML += `<option value="${key}">👤 ${localEmployees[key].name}</option>`;
-                });
-                archiveWindowEmployeeFilter.value = currentArchiveSelection || "all";
-            }
-        }
-
-        if(adminEmployeeFilter) adminEmployeeFilter.addEventListener('change', calculateManagementData);
-        if(salesEmployeeFilter) salesEmployeeFilter.addEventListener('change', renderSalesTable);
-        if(archiveWindowEmployeeFilter) archiveWindowEmployeeFilter.addEventListener('change', () => renderSalesArchiveWindow(localArchive));
-
-        // --- RENDERIZZAZIONE AZIONI RAPIDE VENDITA ---
-        function renderQuickSalesGrid() {
-            const container = document.getElementById('quick-sales-grid');
-            if(!container) return;
-            
-            // Bottone Vendita Libera Semper Presente
-            container.innerHTML = `
-                <div onclick="openSmartModal('sale_custom', null)" class="bg-gray-800/80 border border-gray-600 rounded-xl p-4 cursor-pointer hover:border-amber-500 hover:bg-gray-750 transition-all flex flex-col items-center justify-center text-center group min-h-[110px] shadow-lg hover:shadow-amber-500/20">
-                    <div class="h-10 w-10 bg-amber-500/10 rounded-full flex items-center justify-center mb-2 group-hover:bg-amber-500 transition-colors">
-                        <i class="fa-solid fa-plus text-xl text-amber-500 group-hover:text-gray-900 transition-colors"></i>
-                    </div>
-                    <span class="font-extrabold text-amber-400 text-xs uppercase tracking-wide">Vendita Libera</span>
-                </div>
-            `;
-            
-            // Generazione Bottoni dal Catalogo
-            Object.keys(localCatalog).forEach(key => {
-                const item = localCatalog[key];
-                container.innerHTML += `
-                    <div onclick="openSmartModal('sale_catalog', '${key}')" class="bg-gray-800/80 border border-gray-600 rounded-xl p-4 cursor-pointer hover:border-emerald-500 hover:bg-gray-750 transition-all flex flex-col items-center justify-center text-center group min-h-[110px] shadow-lg hover:shadow-emerald-500/20">
-                        <i class="fa-solid fa-tag text-2xl text-gray-500 mb-2 group-hover:text-emerald-400 transition-colors"></i>
-                        <span class="font-bold text-gray-200 text-sm leading-tight">${item.name}</span>
-                        <span class="text-emerald-400 text-xs font-bold mt-1 bg-emerald-400/10 px-2 py-0.5 rounded">${formatValuta(item.price)}</span>
-                    </div>
-                `;
-            });
-        }
-
-
-        // --- LOGICA SEZIONE INVENTARIO ---
-        const invSearchFilter = document.getElementById('inv-search-filter');
-        const invStashFilter = document.getElementById('inv-stash-filter');
-        
-        if(invSearchFilter) invSearchFilter.addEventListener('input', renderInventoryGrid);
-        if(invStashFilter) invStashFilter.addEventListener('change', renderInventoryGrid);
-
-        function renderInventoryDropdowns() {
-            const invItemSelect = document.getElementById('inv-item-select');
-            if(!invItemSelect) return;
-            invItemSelect.innerHTML = '<option value="">-- Seleziona Oggetto --</option>';
-            Object.keys(localInventory).forEach(key => {
-                const item = localInventory[key];
-                invItemSelect.innerHTML += `<option value="${key}">${item.name} (${getStashName(item.stash)}) - Disp: ${item.quantity}</option>`;
-            });
-        }
-
-        function renderInventoryGrid() {
-            const grid = document.getElementById('inventory-grid');
-            if(!grid) return;
-            grid.innerHTML = '';
-            
-            const searchVal = (invSearchFilter ? invSearchFilter.value.toLowerCase() : '');
-            const stashVal = (invStashFilter ? invStashFilter.value : 'all');
-
-            let items = Object.keys(localInventory).map(k => ({id: k, ...localInventory[k]}));
-            
-            if(stashVal !== 'all') {
-                items = items.filter(i => i.stash === stashVal);
-            }
-            if(searchVal) {
-                items = items.filter(i => i.name.toLowerCase().includes(searchVal));
-            }
-
-            if(items.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-6 text-gray-500 text-sm">Nessun oggetto trovato in inventario.</div>`;
-                return;
-            }
-
-            items.forEach(item => {
-                let adminDeleteBtn = '';
-                if(userRole === 'gestore') {
-                    // STOP PROPAGATION per non aprire il modal se clicco sul cestino!
-                    adminDeleteBtn = `
-                        <button onclick="event.stopPropagation(); window.deleteInventoryItem('${item.id}', '${item.name.replace(/'/g, "\\'")}')" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition text-xs shadow-lg z-20" title="Rimuovi Oggetto">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>`;
-                }
-
-                // Aggiunto onclick per lo Smart Modal
-                grid.innerHTML += `
-                    <div onclick="openSmartModal('inv', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 hover:shadow-amber-500/20 transition-all">
-                        ${adminDeleteBtn}
-                        <div class="h-28 w-full bg-gray-900 flex items-center justify-center p-2">
-                            <img src="${item.imageUrl}" alt="${item.name}" class="max-h-full max-w-full object-contain drop-shadow-md transition transform group-hover:scale-110" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
-                        </div>
-                        <div class="p-3 flex-1 flex flex-col justify-between">
-                            <h4 class="font-bold text-amber-400 text-sm truncate" title="${item.name}">${item.name}</h4>
-                            <div class="mt-2 flex justify-between items-end">
-                                <span class="text-[10px] text-gray-400 font-semibold bg-gray-700 px-2 py-0.5 rounded">${getStashName(item.stash)}</span>
-                                <span class="text-emerald-400 font-bold text-sm">Qta: ${item.quantity}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function renderInventoryLogs() {
-            const tbody = document.getElementById('inventory-logs-table');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            if(localInventoryLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 text-xs">Nessun movimento registrato.</td></tr>`;
-                return;
-            }
-
-            localInventoryLogs.forEach(log => {
-                const isDeposit = log.action === 'deposita';
-                const actionBadge = isDeposit 
-                    ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>` 
-                    : `<span class="text-amber-500 bg-amber-500/10 px-2 py-1 rounded text-xs font-bold">📤 Preleva</span>`;
-                
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-750/50 transition border-b border-gray-700">
-                        <td class="p-3 text-xs text-gray-400">${log.dateString}</td>
-                        <td class="p-3 font-semibold text-gray-200">${log.employeeName}</td>
-                        <td class="p-3">${actionBadge}</td>
-                        <td class="p-3 text-gray-300 text-xs"><b>${log.itemName}</b> (x${log.quantity})</td>
-                        <td class="p-3 text-gray-400 text-xs italic truncate max-w-[150px]" title="${log.reason}">${log.reason || '-'}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- SUBMIT GESTIONE INVENTARIO (GESTORE) ---
-        const invAdminForm = document.getElementById('inventory-admin-form');
-        if(invAdminForm) {
-            invAdminForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('inv-admin-name').value.trim();
-                const imageUrl = document.getElementById('inv-admin-img').value.trim();
-                const quantity = parseInt(document.getElementById('inv-admin-qty').value) || 0;
-                const stash = document.getElementById('inv-admin-stash').value;
-
-                db.collection('inventory_items').add({
-                    name: name,
-                    imageUrl: imageUrl,
-                    quantity: quantity,
-                    stash: stash,
-                    createdAt: Date.now()
-                }).then(() => {
-                    invAdminForm.reset();
-                    showToast("Oggetto creato e inserito nel deposito!", "success");
-                }).catch(err => showToast(err.message, "error"));
-            });
-        }
-
-        window.deleteInventoryItem = function(id, name) {
-            showConfirmModal(
-                "Elimina Oggetto",
-                `Vuoi davvero rimuovere "${name}" dall'inventario definitivamente?`,
-                () => {
-                    db.collection('inventory_items').doc(id).delete()
-                        .then(() => showToast("Oggetto rimosso.", "info"))
-                        .catch(err => showToast(err.message, "error"));
-                },
-                true
-            );
-        };
-
-        // --- SUBMIT MOVIMENTO INVENTARIO (VECCHIO FORM MANUALE) ---
-        const invTransactionForm = document.getElementById('inventory-transaction-form');
-        if(invTransactionForm) {
-            invTransactionForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                const empId = document.getElementById('inv-emp-select').value;
-                const itemId = document.getElementById('inv-item-select').value;
-                const action = document.getElementById('inv-action').value;
-                const qty = parseInt(document.getElementById('inv-qty').value) || 1;
-                const reason = document.getElementById('inv-reason').value.trim();
-
-                if(!empId || !itemId) {
-                    showToast("Seleziona dipendente e oggetto.", "warning");
-                    return;
-                }
-
-                const item = localInventory[itemId];
-                if(!item) {
-                    showToast("Oggetto non trovato.", "error");
-                    return;
-                }
-
-                let newQty = item.quantity;
-                if(action === 'preleva') {
-                    if(qty > item.quantity) {
-                        showToast(`Errore: Stai cercando di prelevare ${qty} ma ce ne sono solo ${item.quantity}.`, "error");
-                        return;
-                    }
-                    newQty -= qty;
-                } else {
-                    newQty += qty;
-                }
-
-                const empName = localEmployees[empId] ? localEmployees[empId].name : 'Dipendente';
-
-                // Eseguiamo aggiornamento quantità e log insieme
-                const batch = db.batch();
-                const itemRef = db.collection('inventory_items').doc(itemId);
-                const logRef = db.collection('inventory_logs').doc();
-
-                batch.update(itemRef, { quantity: newQty });
-                batch.set(logRef, {
-                    timestamp: Date.now(),
-                    dateString: new Date().toLocaleString('it-IT'),
-                    employeeId: empId,
-                    employeeName: empName,
-                    itemId: itemId,
-                    itemName: item.name,
-                    action: action,
-                    quantity: qty,
-                    reason: reason
-                });
-
-                batch.commit().then(() => {
-                    invTransactionForm.reset();
-                    document.getElementById('inv-qty').value = 1;
-                    showToast("Movimento registrato con successo!", "success");
-                }).catch(err => showToast("Errore salvataggio movimento: " + err.message, "error"));
-            });
-        }
-
-
-        // --- LOGICA SEZIONE FENICI (DUPLICATO INVENTARIO) ---
-        const fenSearchFilter = document.getElementById('fen-search-filter');
-        const fenStashFilter = document.getElementById('fen-stash-filter');
-        
-        if(fenSearchFilter) fenSearchFilter.addEventListener('input', renderFeniciGrid);
-        if(fenStashFilter) fenStashFilter.addEventListener('change', renderFeniciGrid);
-
-        function renderFeniciDropdowns() {
-            const fenItemSelect = document.getElementById('fen-item-select');
-            if(!fenItemSelect) return;
-            fenItemSelect.innerHTML = '<option value="">-- Seleziona Oggetto --</option>';
-            Object.keys(localFenici).forEach(key => {
-                const item = localFenici[key];
-                fenItemSelect.innerHTML += `<option value="${key}">${item.name} (${getStashName(item.stash)}) - Disp: ${item.quantity}</option>`;
-            });
-        }
-
-        function renderFeniciGrid() {
-            const grid = document.getElementById('fenici-grid');
-            if(!grid) return;
-            grid.innerHTML = '';
-            
-            const searchVal = (fenSearchFilter ? fenSearchFilter.value.toLowerCase() : '');
-            const stashVal = (fenStashFilter ? fenStashFilter.value : 'all');
-
-            let items = Object.keys(localFenici).map(k => ({id: k, ...localFenici[k]}));
-            
-            if(stashVal !== 'all') {
-                items = items.filter(i => i.stash === stashVal);
-            }
-            if(searchVal) {
-                items = items.filter(i => i.name.toLowerCase().includes(searchVal));
-            }
-
-            if(items.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-6 text-gray-500 text-sm">Nessun oggetto trovato in Fenici.</div>`;
-                return;
-            }
-
-            items.forEach(item => {
-                let adminDeleteBtn = '';
-                if(userRole === 'gestore') {
-                    // STOP PROPAGATION per non aprire il modal
-                    adminDeleteBtn = `
-                        <button onclick="event.stopPropagation(); window.deleteFeniciItem('${item.id}', '${item.name.replace(/'/g, "\\'")}')" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition text-xs shadow-lg z-20" title="Rimuovi Oggetto">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>`;
-                }
-
-                // Aggiunto onclick per lo Smart Modal (FENICI)
-                grid.innerHTML += `
-                    <div onclick="openSmartModal('fen', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 hover:shadow-amber-500/20 transition-all">
-                        ${adminDeleteBtn}
-                        <div class="h-28 w-full bg-gray-900 flex items-center justify-center p-2">
-                            <img src="${item.imageUrl}" alt="${item.name}" class="max-h-full max-w-full object-contain drop-shadow-md transition transform group-hover:scale-110" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
-                        </div>
-                        <div class="p-3 flex-1 flex flex-col justify-between">
-                            <h4 class="font-bold text-amber-400 text-sm truncate" title="${item.name}">${item.name}</h4>
-                            <div class="mt-2 flex justify-between items-end">
-                                <span class="text-[10px] text-gray-400 font-semibold bg-gray-700 px-2 py-0.5 rounded">${getStashName(item.stash)}</span>
-                                <span class="text-emerald-400 font-bold text-sm">Qta: ${item.quantity}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function renderFeniciLogs() {
-            const tbody = document.getElementById('fenici-logs-table');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            if(localFeniciLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 text-xs">Nessun movimento registrato.</td></tr>`;
-                return;
-            }
-
-            localFeniciLogs.forEach(log => {
-                const isDeposit = log.action === 'deposita';
-                const actionBadge = isDeposit 
-                    ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>` 
-                    : `<span class="text-amber-500 bg-amber-500/10 px-2 py-1 rounded text-xs font-bold">📤 Preleva</span>`;
-                
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-750/50 transition border-b border-gray-700">
-                        <td class="p-3 text-xs text-gray-400">${log.dateString}</td>
-                        <td class="p-3 font-semibold text-gray-200">${log.employeeName}</td>
-                        <td class="p-3">${actionBadge}</td>
-                        <td class="p-3 text-gray-300 text-xs"><b>${log.itemName}</b> (x${log.quantity})</td>
-                        <td class="p-3 text-gray-400 text-xs italic truncate max-w-[150px]" title="${log.reason}">${log.reason || '-'}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- SUBMIT GESTIONE FENICI (GESTORE) ---
-        const fenAdminForm = document.getElementById('fenici-admin-form');
-        if(fenAdminForm) {
-            fenAdminForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('fen-admin-name').value.trim();
-                const imageUrl = document.getElementById('fen-admin-img').value.trim();
-                const quantity = parseInt(document.getElementById('fen-admin-qty').value) || 0;
-                const stash = document.getElementById('fen-admin-stash').value;
-
-                db.collection('fenici_items').add({
-                    name: name,
-                    imageUrl: imageUrl,
-                    quantity: quantity,
-                    stash: stash,
-                    createdAt: Date.now()
-                }).then(() => {
-                    fenAdminForm.reset();
-                    showToast("Oggetto creato e inserito nel deposito Fenici!", "success");
-                }).catch(err => showToast(err.message, "error"));
-            });
-        }
-
-        window.deleteFeniciItem = function(id, name) {
-            showConfirmModal(
-                "Elimina Oggetto",
-                `Vuoi davvero rimuovere "${name}" da Fenici definitivamente?`,
-                () => {
-                    db.collection('fenici_items').doc(id).delete()
-                        .then(() => showToast("Oggetto rimosso.", "info"))
-                        .catch(err => showToast(err.message, "error"));
-                },
-                true
-            );
-        };
-
-        // --- SUBMIT MOVIMENTO FENICI (VECCHIO FORM MANUALE) ---
-        const fenTransactionForm = document.getElementById('fenici-transaction-form');
-        if(fenTransactionForm) {
-            fenTransactionForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                const empId = document.getElementById('fen-emp-select').value;
-                const itemId = document.getElementById('fen-item-select').value;
-                const action = document.getElementById('fen-action').value;
-                const qty = parseInt(document.getElementById('fen-qty').value) || 1;
-                const reason = document.getElementById('fen-reason').value.trim();
-
-                if(!empId || !itemId) {
-                    showToast("Seleziona dipendente e oggetto.", "warning");
-                    return;
-                }
-
-                const item = localFenici[itemId];
-                if(!item) {
-                    showToast("Oggetto non trovato.", "error");
-                    return;
-                }
-
-                let newQty = item.quantity;
-                if(action === 'preleva') {
-                    if(qty > item.quantity) {
-                        showToast(`Errore: Stai cercando di prelevare ${qty} ma ce ne sono solo ${item.quantity}.`, "error");
-                        return;
-                    }
-                    newQty -= qty;
-                } else {
-                    newQty += qty;
-                }
-
-                const empName = localEmployees[empId] ? localEmployees[empId].name : 'Dipendente';
-
-                // Eseguiamo aggiornamento quantità e log insieme
-                const batch = db.batch();
-                const itemRef = db.collection('fenici_items').doc(itemId);
-                const logRef = db.collection('fenici_logs').doc();
-
-                batch.update(itemRef, { quantity: newQty });
-                batch.set(logRef, {
-                    timestamp: Date.now(),
-                    dateString: new Date().toLocaleString('it-IT'),
-                    employeeId: empId,
-                    employeeName: empName,
-                    itemId: itemId,
-                    itemName: item.name,
-                    action: action,
-                    quantity: qty,
-                    reason: reason
-                });
-
-                batch.commit().then(() => {
-                    fenTransactionForm.reset();
-                    document.getElementById('fen-qty').value = 1;
-                    showToast("Movimento registrato con successo in Fenici!", "success");
-                }).catch(err => showToast("Errore salvataggio movimento: " + err.message, "error"));
-            });
-        }
-
-
-        // --- INSERIMENTO OPERATIVO VENDITE (VECCHIO FORM MANUALE) ---
-        const saleForm = document.getElementById('sale-form');
-        if(saleForm) {
-            saleForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const empKey = saleEmployeeSelect.value;
-                const serviceKey = saleServiceSelect.value;
-                const quantity = parseInt(saleQuantityInput.value) || 1;
-
-                if (!empKey) {
-                    showToast("Seleziona un dipendente dall'elenco!", "warning");
-                    return;
-                }
-
-                let saleData = {
-                    timestamp: Date.now(),
-                    dateString: new Date().toLocaleString('it-IT'),
-                    employeeKey: empKey,
-                    employeeName: localEmployees[empKey].name,
-                    employeeRank: localEmployees[empKey].rank,
-                    quantity: quantity
-                };
-
-                const empPct = localEmployees[empKey].customPercentage ? parseFloat(localEmployees[empKey].customPercentage) : 40;
-                saleData.appliedPercentage = empPct;
-
-                if (serviceKey === 'custom') {
-                    const name = document.getElementById('sale-custom-name').value.trim();
-                    const totalCostInput = parseFloat(saleCustomPriceInput.value);
-
-                    if (!name || isNaN(totalCostInput)) {
-                        showToast("Compila i campi del servizio libero e inserisci l'importo totale.", "warning");
-                        return;
-                    }
-
-                    const finalTotalPrice = totalCostInput * quantity;
-                    const calculatedYellowCost = 0; 
-                    const yellowGain = finalTotalPrice - calculatedYellowCost;
-                    const employeeGain = (yellowGain * empPct) / 100;
-
-                    saleData.serviceName = "[LIBERO] " + name;
-                    saleData.totalPrice = finalTotalPrice;
-                    saleData.yellowCost = calculatedYellowCost;
-                    saleData.yellowGain = yellowGain;
-                    saleData.employeeGain = employeeGain;
-                } else {
-                    const item = localCatalog[serviceKey];
-                    const finalTotalPrice = item.price * quantity;
-                    const finalYellowCost = (item.cost || 0) * quantity; 
-                    const yellowGain = finalTotalPrice - finalYellowCost;
-                    const employeeGain = (yellowGain * empPct) / 100;
-
-                    saleData.serviceName = item.name;
-                    saleData.totalPrice = finalTotalPrice;
-                    saleData.yellowCost = finalYellowCost;
-                    saleData.yellowGain = yellowGain;
-                    saleData.employeeGain = employeeGain;
-                }
-
-                db.collection('current_sales').add(saleData)
-                    .then(() => {
-                        saleForm.reset();
-                        customNameField.classList.remove('hidden');
-                        saleCustomPriceInput.disabled = false;
-                        priceLabelText.textContent = "Costo Totale (€)";
-                        saleQuantityInput.value = "1";
-                        showToast("Vendita registrata su Firestore!", "success");
-                    })
-                    .catch(err => showToast("Errore di scrittura Firestore: " + err.message, "error"));
-            });
-        }
-
-        window.deleteSaleItem = function(key) {
-            if (userRole !== 'gestore') return;
-            const sale = localSales[key];
-            if (!sale) return;
-            showConfirmModal(
-                "Elimina Vendita Registrata",
-                `Vuoi davvero eliminare la vendita di "${sale.serviceName}" registrata da ${sale.employeeName} per un totale di ${formatValuta(sale.totalPrice)}?`,
-                () => {
-                    db.collection('current_sales').doc(key).delete()
-                        .then(() => {
-                            showToast("Vendita rimossa permanentemente.", "info");
-                        })
-                        .catch(err => showToast("Errore durante l'eliminazione: " + err.message, "error"));
-                },
-                true
-            );
-        };
-
-        // RENDERING DELLE VENDITE (Filtra solo la settimana corrente per il reset domenicale automatico)
-        function renderSalesTable() {
-            const tbody = document.getElementById('current-sales-table');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            const thead = tbody.closest('table').querySelector('thead tr');
-            if (thead) {
-                const existingHeader = thead.querySelector('.action-header');
-                if (userRole === 'gestore') {
-                    if (!existingHeader) {
-                        thead.innerHTML += `<th class="pb-3 pt-2 text-right action-header">Azioni</th>`;
-                    }
-                } else {
-                    if (existingHeader) existingHeader.remove();
-                }
-            }
-
-            const filterVal = salesEmployeeFilter ? salesEmployeeFilter.value : 'all';
-            let salesArray = Object.keys(localSales).map(key => ({key, ...localSales[key]}));
-            
-            // RESET AUTOMATICO DOMENICALE (VISIVO): Filtra solo i record con timestamp >= Lunedì ore 00:00 corrente
-            const startOfWeek = getStartOfCurrentWeek();
-            salesArray = salesArray.filter(sale => sale.timestamp >= startOfWeek);
-            
-            if (userRole === 'gestore' && filterVal !== 'all') {
-                salesArray = salesArray.filter(sale => sale.employeeKey === filterVal);
-            }
-            
-            salesArray.sort((a,b) => b.timestamp - a.timestamp);
-            const colspanCount = userRole === 'gestore' ? 7 : 6;
-
-            if(salesArray.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${colspanCount}" class="text-center py-4 text-gray-500 text-xs">Nessuna operazione registrata in questa settimana.</td></tr>`;
-                return;
-            }
-
-            salesArray.forEach(sale => {
-                let actionTd = '';
-                if (userRole === 'gestore') {
-                    actionTd = `
-                        <td class="py-3 text-right">
-                            <button onclick="window.deleteSaleItem('${sale.key}')" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition" title="Elimina questa vendita">
-                                <i class="fa-solid fa-trash text-[10px]"></i>
-                            </button>
-                        </td>
-                    `;
-                }
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-750/50 transition border-b border-gray-800">
-                        <td class="py-3 text-xs text-gray-400">${sale.dateString.split(',')[0]}</td>
-                        <td class="py-3 font-semibold text-amber-400">${sale.employeeName}</td>
-                        <td class="py-3 text-gray-300 text-xs">${sale.serviceName} <span class="text-[10px] text-gray-500">x${sale.quantity || 1}</span></td>
-                        <td class="py-3 text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</td>
-                        <td class="py-3 text-gray-300">${formatValuta(sale.yellowGain)}</td>
-                        <td class="py-3 text-indigo-400 font-semibold">${formatValuta(sale.employeeGain)} <span class="text-[10px] text-gray-500">(${sale.appliedPercentage}%)</span></td>
-                        ${actionTd}
-                    </tr>
-                `;
-            });
-        }
-
-        // --- DINAMICA DI RENDERING: NUOVA FINESTRA DETTAGLIATA ARCHIVIO (PER SETTIMANA E CON FILTRO) ---
-        function renderSalesArchiveWindow(archiveList) {
-            const container = document.getElementById('archive-window-weeks-container');
-            if(!container) return;
-            container.innerHTML = '';
-
-            const filterVal = archiveWindowEmployeeFilter ? archiveWindowEmployeeFilter.value : 'all';
-            const items = Object.keys(archiveList).map(k => ({key: k, ...archiveList[k]}));
-            
-            // Ordina i blocchi di archivio cronologicamente decrescente
-            items.sort((a,b) => b.timestamp - a.timestamp);
-
-            if(items.length === 0) {
-                container.innerHTML = `<div class="text-center py-4 text-gray-500 text-xs">Nessun blocco di archivio registrato nel database.</div>`;
-                return;
-            }
-
-            items.forEach(item => {
-                // Estrae le singole vendite racchiuse all'interno di questo specifico blocco settimanale
-                let weekSalesArray = Object.keys(item.sales || {}).map(sk => item.sales[sk]);
-
-                // Filtra per dipendente se selezionato uno specifico
-                if(filterVal !== 'all') {
-                    weekSalesArray = weekSalesArray.filter(sale => sale.employeeKey === filterVal);
-                }
-
-                // Se non ci sono vendite che corrispondono al filtro in questa settimana, nascondi l'intero blocco settimanale
-                if(weekSalesArray.length === 0) return;
-
-                // Ordina le vendite della settimana per data/ora decrescente
-                weekSalesArray.sort((a, b) => b.timestamp - a.timestamp);
-
-                const weekBlock = document.createElement('div');
-                weekBlock.className = "bg-gray-800/40 p-4 rounded-xl border border-gray-700/70 shadow-inner";
-
-                let tableRowsHtml = '';
-                weekSalesArray.forEach(sale => {
-                    tableRowsHtml += `
-                        <tr class="hover:bg-gray-800/80 transition border-b border-gray-800/50">
-                            <td class="py-2 px-2 text-xs text-gray-400 whitespace-nowrap">${sale.dateString}</td>
-                            <td class="py-2 px-2 text-xs font-bold text-amber-400">${sale.employeeName}</td>
-                            <td class="py-2 px-2 text-xs text-gray-200 font-medium">${sale.serviceName} <span class="text-[10px] text-gray-500 font-bold">x${sale.quantity || 1}</span></td>
-                            <td class="py-2 px-2 text-xs text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</td>
-                            <td class="py-2 px-2 text-xs text-gray-400">${formatValuta(sale.yellowGain)}</td>
-                            <td class="py-2 px-2 text-xs text-indigo-400 font-bold">${formatValuta(sale.employeeGain)} <span class="text-[9px] text-gray-500">(${sale.appliedPercentage}%)</span></td>
-                        </tr>
-                    `;
-                });
-
-                weekBlock.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-3">
-                        <h3 class="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center">
-                            <i class="fa-solid fa-calendar-check mr-2 text-gray-400"></i> ${item.title}
-                        </h3>
-                        <span class="text-[10px] font-bold px-2 py-0.5 bg-gray-800 rounded-full border border-gray-700 text-gray-400">${weekSalesArray.length} record trovati</span>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-gray-700 bg-gray-900/40 text-gray-400 text-[10px] uppercase tracking-wider">
-                                    <th class="py-2 px-2">Data e Ora</th>
-                                    <th class="py-2 px-2">Dipendente</th>
-                                    <th class="py-2 px-2">Cosa ha venduto (Qta)</th>
-                                    <th class="py-2 px-2">Totale Lordo</th>
-                                    <th class="py-2 px-2">Guadagno Yellow</th>
-                                    <th class="py-2 px-2">Spett. Staff</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-800/40">
-                                ${tableRowsHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                container.appendChild(weekBlock);
-            });
-
-            if(container.children.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-gray-500 text-xs italic">Nessun dato di vendita archiviato corrispondente al dipendente selezionato.</div>`;
-            }
-        }
-
-        // --- GESTIONE LISTINO CATALOGO ---
-        const catalogForm = document.getElementById('catalog-form');
-        const catalogSubmitBtn = document.getElementById('catalog-submit-btn');
-
-        if(catalogForm) {
-            catalogForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const id = document.getElementById('catalog-id').value;
-                const name = document.getElementById('catalog-name').value.trim();
-                const price = parseFloat(document.getElementById('catalog-price').value);
-                const cost = parseFloat(document.getElementById('catalog-cost').value);
-
-                const data = { name, price, cost };
-
-                if(id) {
-                    db.collection('catalog').doc(id).set(data)
-                        .then(() => {
-                            resetCatalogForm();
-                            showToast("Servizio modificato su Firestore!", "success");
-                        })
-                        .catch(err => showToast(err.message, "error"));
-                } else {
-                    db.collection('catalog').add(data)
-                        .then(() => {
-                            resetCatalogForm();
-                            showToast("Servizio aggiunto al listino Firestore!", "success");
-                        })
-                        .catch(err => showToast(err.message, "error"));
-                }
-            });
-        }
-
-        function resetCatalogForm() {
-            if(!catalogForm) return;
-            catalogForm.reset();
-            document.getElementById('catalog-id').value = '';
-            catalogSubmitBtn.textContent = "Aggiungi al Catalogo";
-            catalogSubmitBtn.className = "w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition";
-        }
-
-        window.editCatalogItem = function(key) {
-            const item = localCatalog[key];
-            document.getElementById('catalog-id').value = key;
-            document.getElementById('catalog-name').value = item.name;
-            document.getElementById('catalog-price').value = item.price;
-            document.getElementById('catalog-cost').value = item.cost;
-            
-            catalogSubmitBtn.textContent = "Salva Modifiche Oggetto";
-            catalogSubmitBtn.className = "w-full py-2 bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold text-sm rounded-xl transition";
-            showToast("Dati caricati nel form. Modifica i campi e primi Salva.", "info");
-        };
-
-        window.deleteCatalogItem = function(key) {
-            showConfirmModal(
-                "Elimina dal Catalogo",
-                `Vuoi davvero rimuovere "${localCatalog[key].name}" dal listino aziendale?`,
-                () => {
-                    db.collection('catalog').doc(key).delete()
-                        .then(() => showToast("Elemento rimosso da Firestore.", "info"))
-                        .catch(err => showToast(err.message, "error"));
-                },
-                true
-            );
-        };
-
-        function renderCatalog() {
-            const tbody = document.getElementById('catalog-table-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            const keys = Object.keys(localCatalog);
-            if(keys.length === 0){
-                tbody.innerHTML = `<tr><td class="p-4 text-center text-gray-500 text-xs">Nessun servizio nel catalogo. Controlla connessione o permessi.</td></tr>`;
-                return;
-            }
-
-            keys.forEach(key => {
-                const item = localCatalog[key];
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-770/60 border-b border-gray-700">
-                        <td class="p-2 font-bold text-xs">${item.name}</td>
-                        <td class="p-2 text-emerald-400 text-xs">Prezzo: ${formatValuta(item.price)}</td>
-                        <td class="p-2 text-amber-500 text-xs">Costo YJ: ${formatValuta(item.cost)}</td>
-                        <td class="p-2 text-right space-x-1 whitespace-nowrap">
-                            <button onclick="window.editCatalogItem('${key}')" class="p-1 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500 hover:text-gray-900 transition"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                            <button onclick="window.deleteCatalogItem('${key}')" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- GESTIONE DIPENDENTI ---
-        const employeeForm = document.getElementById('employee-form');
-        if(employeeForm) {
-            employeeForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('emp-name').value.trim();
-                const rank = document.getElementById('emp-rank').value.trim();
-                const customPercentage = document.getElementById('emp-percentage').value;
-
-                const empData = {
-                    name: name,
-                    rank: rank,
-                    customPercentage: customPercentage !== "" ? parseInt(customPercentage) : null
-                };
-
-                db.collection('employees').add(empData)
-                    .then(() => {
-                        employeeForm.reset();
-                        showToast("Nuovo dipendente inserito su Firestore!", "success");
-                    })
-                    .catch(err => showToast(err.message, "error"));
-            });
-        }
-
-        window.deleteEmployee = function(key) {
-            showConfirmModal(
-                "Rimuovi Dipendente",
-                `Vuoi rimuovere formalmente "${localEmployees[key].name}" dal pannello dello staff?`,
-                () => {
-                    db.collection('employees').doc(key).delete()
-                        .then(() => showToast("Dipendente rimosso dal sistema aziendale Firestore.", "info"))
-                        .catch(err => showToast(err.message, "error"));
-                },
-                true
-            );
-        };
-
-        function renderEmployees() {
-            const tbody = document.getElementById('employee-table-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            const keys = Object.keys(localEmployees);
-            if(keys.length === 0){
-                tbody.innerHTML = `<tr><td class="p-4 text-center text-gray-500 text-xs">Nessun dipendente censito. Controlla connessione o permessi.</td></tr>`;
-                return;
-            }
-
-            keys.forEach(key => {
-                const emp = localEmployees[key];
-                const pctDisp = emp.customPercentage ? `${emp.customPercentage}% (Pers.)` : '40% (Standard)';
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-700/60 border-b border-gray-700 text-xs">
-                        <td class="p-2 font-bold text-amber-400">${emp.name}</td>
-                        <td class="p-2 text-gray-300">${emp.rank}</td>
-                        <td class="p-2 text-indigo-400">${pctDisp}</td>
-                        <td class="p-2 text-right">
-                            <button onclick="window.deleteEmployee('${key}')" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition"><i class="fa-solid fa-user-minus text-[10px]"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        window.updateSalaryStatus = function(employeeKey, statusValue) {
-            db.collection('current_salaries_status').doc(employeeKey).set({ status: statusValue })
-                .then(() => {
-                    showToast("Stato pagamento aggiornato con successo.", "success");
-                    calculateManagementData(); 
-                })
-                .catch(err => showToast(err.message, "error"));
-        };
-
-        // --- CONTEGGI PANEL GESTORE: ACCUMULA TUTTO FINCHÉ NON ARCHIVI MANUALE ---
-        function calculateManagementData() {
-            const filterValue = adminEmployeeFilter ? adminEmployeeFilter.value : "all";
-            
-            let totalSalesAmount = 0;
-            let totalYellowGain = 0;
-            let totalSalaries = 0;
-            let totalYellowItemCosts = 0;
-
-            let staffStats = {};
-            Object.keys(localEmployees).forEach(k => {
-                const currentStatus = localSalariesStatus[k] || 'non_pagato';
-                staffStats[k] = { 
-                    name: localEmployees[k].name, 
-                    rank: localEmployees[k].rank, 
-                    count: 0, 
-                    salary: 0, 
-                    pct: localEmployees[k].customPercentage || 40,
-                    status: currentStatus
-                };
-            });
-
-            const singleEmpTableBody = document.getElementById('single-employee-sales-table');
-            const singleEmpCard = document.getElementById('single-employee-sales-card');
-            const archiveSingleBtn = document.getElementById('archive-single-employee-btn');
-            
-            if(singleEmpTableBody) {
-                singleEmpTableBody.innerHTML = "";
-                const singleThead = singleEmpTableBody.closest('table').querySelector('thead tr');
-                if (singleThead && !singleThead.querySelector('.action-header')) {
-                    singleThead.innerHTML += `<th class="pb-2 text-right action-header">Azioni</th>`;
-                }
-            }
-
-            // Elabora tutte le vendite accumulate non ancora archiviate (senza blocchi temporali)
-            Object.keys(localSales).forEach(key => {
-                const sale = localSales[key];
-
-                if (!staffStats[sale.employeeKey]) {
-                    const currentStatus = localSalariesStatus[sale.employeeKey] || 'non_pagato';
-                    staffStats[sale.employeeKey] = {
-                        name: sale.employeeName + " (Rimosso)",
-                        rank: sale.employeeRank,
-                        count: 0,
-                        salary: 0,
-                        pct: sale.appliedPercentage,
-                        status: currentStatus
-                    };
-                }
-
-                staffStats[sale.employeeKey].count += (sale.quantity || 1);
-                staffStats[sale.employeeKey].salary += sale.employeeGain;
-
-                if (filterValue === 'all' || sale.employeeKey === filterValue) {
-                    totalSalesAmount += sale.totalPrice;
-                    totalYellowGain += sale.yellowGain;
-                    totalSalaries += sale.employeeGain;
-                    totalYellowItemCosts += (sale.yellowCost || 0);
-
-                    if (filterValue !== 'all' && singleEmpTableBody) {
-                        singleEmpTableBody.innerHTML += `
-                            <tr class="hover:bg-gray-800 transition border-b border-gray-800">
-                                <td class="py-2 text-gray-400">${sale.dateString}</td>
-                                <td class="py-2 font-bold text-amber-400">${sale.serviceName}</td>
-                                <td class="py-2 text-center text-gray-300">${sale.quantity || 1}</td>
-                                <td class="py-2 text-emerald-400 font-semibold">${formatValuta(sale.totalPrice)}</td>
-                                <td class="py-2 text-indigo-400 font-bold">${formatValuta(sale.employeeGain)}</td>
-                                <td class="py-2 text-right">
-                                    <button onclick="window.deleteSaleItem('${key}')" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition" title="Elimina questa vendita">
-                                        <i class="fa-solid fa-trash text-[10px]"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                }
-            });
-
-            if (filterValue !== 'all') {
-                if(singleEmpCard) singleEmpCard.classList.remove('hidden');
-                if(archiveSingleBtn) {
-                    archiveSingleBtn.classList.remove('hidden');
-                    archiveSingleBtn.textContent = `Archivia Settimana di ${localEmployees[filterValue] ? localEmployees[filterValue].name : 'Dipendente'}`;
-                }
-                if(singleEmpTableBody && singleEmpTableBody.innerHTML === "") {
-                    singleEmpTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 italic">Nessuna vendita non archiviata per questo dipendente.</td></tr>`;
-                }
-            } else {
-                if(singleEmpCard) singleEmpCard.classList.add('hidden');
-                if(archiveSingleBtn) archiveSingleBtn.classList.add('hidden');
-            }
-
-            let totalExpenses = totalYellowItemCosts + totalSalaries;
-
-            const kpiTot = document.getElementById('kpi-total');
-            const kpiYel = document.getElementById('kpi-yellow');
-            const kpiSti = document.getElementById('kpi-stipendi');
-            const kpiExp = document.getElementById('kpi-expenses');
-
-            if(kpiTot) kpiTot.textContent = formatValuta(totalSalesAmount);
-            if(kpiYel) kpiYel.textContent = formatValuta(totalYellowGain);
-            if(kpiSti) kpiSti.textContent = formatValuta(totalSalaries);
-            if(kpiExp) kpiExp.textContent = formatValuta(totalExpenses);
-
-            const tbody = document.getElementById('salary-table-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            const staffKeys = Object.keys(staffStats);
-            if(staffKeys.length === 0){
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 text-xs">Nessun dato finanziario disponibile.</td></tr>`;
-                return;
-            }
-
-            staffKeys.forEach(k => {
-                const s = staffStats[k];
-                const rowHighlight = (filterValue !== 'all' && k === filterValue) ? 'bg-amber-500/10 border-amber-500' : '';
-
-                const selectHtml = `
-                    <select onchange="window.updateSalaryStatus('${k}', this.value)" class="px-2 py-1 bg-gray-700 text-xs rounded-lg text-white border border-gray-600 focus:outline-none focus:border-amber-500">
-                        <option value="non_pagato" ${s.status === 'non_pagato' ? 'selected' : ''}>🔴 Non Pagato</option>
-                        <option value="pagato" ${s.status === 'pagato' ? 'selected' : ''}>🟢 Pagato</option>
-                    </select>
-                `;
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-750/50 border-b border-gray-800 text-xs ${rowHighlight}">
-                        <td class="py-3 font-semibold text-gray-200">${s.name}</td>
-                        <td class="py-3 text-gray-400">${s.rank}</td>
-                        <td class="py-3 text-gray-400">${s.count} oggetti</td>
-                        <td class="py-3 text-amber-500 font-bold">${s.pct}%</td>
-                        <td class="py-3 font-bold text-emerald-400 text-sm">${formatValuta(s.salary)}</td>
-                        <td class="py-3 text-right">${selectHtml}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- SISTEMA DI ARCHIVIAZIONE MANUALE (CONTROLLATO DAL GESTORE) ---
-        const archiveManualBtn = document.getElementById('archive-manual-btn');
-        if(archiveManualBtn) {
-            archiveManualBtn.addEventListener('click', () => {
-                if (Object.keys(localSales).length === 0) {
-                    showToast("Nessun dato di vendita presente da archiviare.", "warning");
-                    return;
-                }
-                
-                showConfirmModal(
-                    "Chiusura e Archiviazione GENERALE",
-                    "Sei sicuro di voler archiviare e azzerare i bilanci correnti per TUTTI i dipendenti? Fallo solo se hai completato i pagamenti reali.",
-                    () => {
-                        archiveCurrentWeek();
-                    },
-                    false
-                );
-            });
-        }
-
-        function archiveCurrentWeek() {
-            const archiveTitle = "Settimana conclusa il " + new Date().toLocaleDateString('it-IT');
-            
-            let finalStaffSalariesReport = {};
-            Object.keys(localEmployees).forEach(k => {
-                finalStaffSalariesReport[k] = {
-                    name: localEmployees[k].name,
-                    rank: localEmployees[k].rank,
-                    salary: 0,
-                    status: localSalariesStatus[k] || 'non_pagato'
-                };
-            });
-
-            Object.keys(localSales).forEach(sk => {
-                const sale = localSales[sk];
-                if(finalStaffSalariesReport[sale.employeeKey]) {
-                    finalStaffSalariesReport[sale.employeeKey].salary += sale.employeeGain;
-                }
-            });
-
-            const archiveData = {
-                title: archiveTitle,
-                timestamp: Date.now(),
-                sales: localSales,
-                salariesReport: finalStaffSalariesReport
-            };
-
-            db.collection('archive').add(archiveData).then(() => {
-                Object.keys(localSales).forEach(sk => {
-                    db.collection('current_sales').doc(sk).delete();
-                });
-                Object.keys(localSalariesStatus).forEach(ek => {
-                    db.collection('current_salaries_status').doc(ek).delete();
-                });
-                
-                if(adminEmployeeFilter) adminEmployeeFilter.value = "all";
-                if(salesEmployeeFilter) salesEmployeeFilter.value = "all";
-                if(archiveWindowEmployeeFilter) archiveWindowEmployeeFilter.value = "all";
-                showToast("Settimana aziendale archiviata con successo e bilanci azzerati!", "success");
-            }).catch(err => showToast(err.message, "error"));
-        }
-
-        const archiveSingleEmployeeBtn = document.getElementById('archive-single-employee-btn');
-        if(archiveSingleEmployeeBtn) {
-            archiveSingleEmployeeBtn.addEventListener('click', () => {
-                const empKey = adminEmployeeFilter.value;
-                if(empKey === "all" || !empKey) return;
-
-                const empName = localEmployees[empKey] ? localEmployees[empKey].name : "Dipendente";
-
-                let singleSalesToArchive = {};
-                Object.keys(localSales).forEach(sk => {
-                    if(localSales[sk].employeeKey === empKey) {
-                        singleSalesToArchive[sk] = localSales[sk];
-                    }
-                });
-
-                if(Object.keys(singleSalesToArchive).length === 0) {
-                    showToast(`Nessuna vendita attiva da archiviare per ${empName}.`, "warning");
-                    return;
-                }
-
-                showConfirmModal(
-                    `Archiviazione Singola: ${empName}`,
-                    `Sei sicuro di voler chiudere e salvare in archivio SOLO le vendite di ${empName}? Il lavoro degli altri dipendenti rimarrà intatto.`,
-                    () => {
-                        executeSingleEmployeeArchive(empKey, empName, singleSalesToArchive);
-                    },
-                    false
-                );
-            });
-        }
-
-        function executeSingleEmployeeArchive(empKey, empName, singleSalesToArchive) {
-            const archiveTitle = `[SINGOLO] Settimana ${empName} conclusa il ` + new Date().toLocaleDateString('it-IT');
-            
-            let finalStaffSalariesReport = {};
-            finalStaffSalariesReport[empKey] = {
-                name: empName,
-                rank: localEmployees[empKey] ? localEmployees[empKey].rank : "Staff",
-                salary: 0,
-                status: localSalariesStatus[empKey] || 'non_pagato'
-            };
-
-            Object.keys(singleSalesToArchive).forEach(sk => {
-                finalStaffSalariesReport[empKey].salary += singleSalesToArchive[sk].employeeGain;
-            });
-
-            const archiveData = {
-                title: archiveTitle,
-                timestamp: Date.now(),
-                sales: singleSalesToArchive,
-                salariesReport: finalStaffSalariesReport
-            };
-
-            db.collection('archive').add(archiveData).then(() => {
-                Object.keys(singleSalesToArchive).forEach(sk => {
-                    db.collection('current_sales').doc(sk).delete();
-                });
-                db.collection('current_salaries_status').doc(empKey).delete();
-                
-                if(adminEmployeeFilter) adminEmployeeFilter.value = "all";
-                if(salesEmployeeFilter) salesEmployeeFilter.value = "all";
-                if(archiveWindowEmployeeFilter) archiveWindowEmployeeFilter.value = "all";
-                showToast(`Settimana di ${empName} archiviata singolarmente con successo!`, "success");
-            }).catch(err => showToast(err.message, "error"));
-        }
-
-        window.deleteArchiveItem = function(key) {
-            showConfirmModal(
-                "Elimina Archivio Storico",
-                "Vuoi davvero eliminare definitivamente questo blocco di archivio? Questa azione cancellerà i dati storici storpiando i vecchi report.",
-                () => {
-                    db.collection('archive').doc(key).delete()
-                        .then(() => showToast("Archivio storico rimosso permanentemente.", "info"))
-                        .catch(err => showToast(err.message, "error"));
-                },
-                true
-            );
-        };
-
-        function renderArchive(archiveList) {
-            const container = document.getElementById('archive-container');
-            if(!container) return;
-            container.innerHTML = '';
-
-            const items = Object.keys(archiveList).map(k => ({key: k, ...archiveList[k]}));
-            items.sort((a,b) => b.timestamp - a.timestamp);
-
-            if(items.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500">Nessun archivio storico presente.</p>`;
-                return;
-            }
-
-            items.forEach(item => {
-                let archTotal = 0;
-                let archYellow = 0;
-                let salesCount = Object.keys(item.sales || {}).length;
-
-                Object.keys(item.sales || {}).forEach(sk => {
-                    archTotal += item.sales[sk].totalPrice;
-                    archYellow += item.sales[sk].yellowGain;
-                });
-
-                let salariesStatusDetailsHtml = "";
-                if(item.salariesReport) {
-                    salariesStatusDetailsHtml = `<div class="mt-2 pt-2 border-t border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-gray-400">`;
-                    Object.keys(item.salariesReport).forEach(ek => {
-                        const empRep = item.salariesReport[ek];
-                        if(empRep.salary > 0) {
-                            const statusBadge = empRep.status === 'pagato' 
-                                ? `<span class="text-emerald-400 font-semibold">🟢 Pagato</span>` 
-                                : `<span class="text-red-400 font-semibold">🔴 Non Pagato</span>`;
-                            salariesStatusDetailsHtml += `<div>${empRep.name}: <b>${formatValuta(empRep.salary)}</b> -> ${statusBadge}</div>`;
-                        }
-                    });
-                    salariesStatusDetailsHtml += `</div>`;
-                }
-
-                container.innerHTML += `
-                    <div class="p-4 bg-gray-750/80 rounded-xl border border-gray-700 text-xs text-gray-300 shadow-md">
-                        <div class="flex flex-wrap justify-between items-center gap-2">
-                            <div>
-                                <p class="font-bold text-sm text-gray-200">${item.title}</p>
-                                <p class="text-gray-400 mt-1">Vendite registrate: <span class="text-amber-400">${salesCount}</span></p>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <div class="flex gap-4">
-                                    <span class="text-emerald-400">Entrate: <b>${formatValuta(archTotal)}</b></span>
-                                    <span class="text-amber-400">Netto Yellow: <b>${formatValuta(archYellow)}</b></span>
-                                </div>
-                                <button onclick="window.deleteArchiveItem('${item.key}')" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition ml-2" title="Elimina definitivamente questo blocco di archivio">
-                                    <i class="fa-solid fa-trash-can text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-                        ${salariesStatusDetailsHtml}
-                    </div>
-                `;
-            });
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

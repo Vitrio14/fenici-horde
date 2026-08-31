@@ -1,0 +1,413 @@
+/* ===== FENICI-HORDE Gestionale – Tema Fuoco & Fenice ===== */
+/* Palette ispirata al logo: nero profondo, arancio fuoco, oro, viola magico */
+
+:root {
+    --fenici-black: #0a0612;
+    --fenici-dark: #120a1a;
+    --fenici-card: #1a1025;
+    --fenici-card-hover: #241832;
+    --fenici-border: #3d2a55;
+    --fenici-orange: #ff6b1a;
+    --fenici-orange-hot: #ff4500;
+    --fenici-gold: #f0b429;
+    --fenici-gold-soft: #fcd34d;
+    --fenici-purple: #9b4dca;
+    --fenici-purple-deep: #6b2d9b;
+    --fenici-magenta: #c026d3;
+    --fenici-text: #f3e8ff;
+    --fenici-muted: #a78bba;
+    --fenici-success: #34d399;
+    --fenici-danger: #f87171;
+    --fenici-glow-orange: 0 0 20px rgba(255, 107, 26, 0.35);
+    --fenici-glow-purple: 0 0 24px rgba(155, 77, 202, 0.3);
+}
+
+/* Sfondo pagina con bagliore radiale */
+body {
+    background-color: var(--fenici-black) !important;
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 107, 26, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 80%, rgba(155, 77, 202, 0.1), transparent),
+        radial-gradient(ellipse 50% 30% at 10% 60%, rgba(192, 38, 211, 0.06), transparent);
+    color: var(--fenici-text);
+}
+
+/* Banner overlay (se presente) */
+.bg-banner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('banner.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#login-page, #main-dashboard {
+    position: relative;
+    z-index: 10;
+}
+
+/* Scrollbar tema Fenici */
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+::-webkit-scrollbar-track {
+    background: var(--fenici-dark);
+}
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--fenici-orange), var(--fenici-purple));
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--fenici-gold), var(--fenici-magenta));
+}
+
+/* ===== SCHERMATA MANUTENZIONE ===== */
+#schermata-manutenzione {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #0a0612;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(255, 69, 0, 0.15) 0, transparent 50%),
+        radial-gradient(at 50% 0%, rgba(155, 77, 202, 0.2) 0, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(192, 38, 211, 0.12) 0, transparent 50%);
+    z-index: 999999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #f3e8ff;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 24px;
+}
+
+#schermata-manutenzione .card-manutenzione {
+    background: rgba(26, 16, 37, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 107, 26, 0.25);
+    padding: 48px 32px;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), var(--fenici-glow-orange);
+    max-width: 480px;
+    width: 100%;
+}
+
+#schermata-manutenzione .badge-manutenzione {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 107, 26, 0.12);
+    border: 1px solid rgba(255, 107, 26, 0.3);
+    color: var(--fenici-orange);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+}
+
+#schermata-manutenzione .badge-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--fenici-orange);
+    border-radius: 50%;
+    animation: pulse-dot-manutenzione 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    box-shadow: 0 0 8px var(--fenici-orange);
+}
+
+#schermata-manutenzione .titolo-manutenzione {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-bottom: 16px;
+    background: linear-gradient(90deg, var(--fenici-gold), var(--fenici-orange), var(--fenici-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+#schermata-manutenzione .testo-manutenzione {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--fenici-muted);
+    margin-bottom: 32px;
+}
+
+#schermata-manutenzione .dev-name {
+    color: var(--fenici-gold-soft);
+    font-weight: 600;
+}
+
+#schermata-manutenzione .progress-bar-container {
+    width: 120px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    margin: 0 auto 32px auto;
+    overflow: hidden;
+    position: relative;
+}
+
+#schermata-manutenzione .progress-bar-line {
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--fenici-orange), var(--fenici-purple), var(--fenici-magenta));
+    border-radius: 10px;
+    position: absolute;
+    animation: loading-bar-manutenzione 1.5s ease-in-out infinite;
+}
+
+#schermata-manutenzione .footer-manutenzione {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #6b5b7a;
+    border-top: 1px solid rgba(255, 107, 26, 0.1);
+    padding-top: 20px;
+}
+
+#schermata-manutenzione .footer-highlight {
+    color: var(--fenici-muted);
+}
+
+@keyframes loading-bar-manutenzione {
+    0% { left: -40%; }
+    50% { left: 100%; }
+    100% { left: 100%; }
+}
+
+@keyframes pulse-dot-manutenzione {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(0.9); }
+}
+
+/* ===== CARD GLASS / PANEL ===== */
+.fenici-card {
+    background: rgba(26, 16, 37, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(157, 77, 202, 0.2);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.fenici-card:hover {
+    border-color: rgba(255, 107, 26, 0.25);
+}
+
+/* Accenti testo */
+.text-fenici-orange { color: var(--fenici-orange) !important; }
+.text-fenici-gold { color: var(--fenici-gold) !important; }
+.text-fenici-purple { color: var(--fenici-purple) !important; }
+
+/* Bottoni principali */
+.btn-fenici {
+    background: linear-gradient(135deg, var(--fenici-orange) 0%, #e85d04 50%, var(--fenici-orange-hot) 100%);
+    color: #1a0a00;
+    font-weight: 700;
+    border: none;
+    box-shadow: var(--fenici-glow-orange);
+    transition: all 0.2s ease;
+}
+.btn-fenici:hover {
+    background: linear-gradient(135deg, var(--fenici-gold) 0%, var(--fenici-orange) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 0 28px rgba(255, 107, 26, 0.5);
+}
+
+.btn-fenici-purple {
+    background: linear-gradient(135deg, var(--fenici-purple) 0%, var(--fenici-purple-deep) 100%);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: var(--fenici-glow-purple);
+}
+.btn-fenici-purple:hover {
+    background: linear-gradient(135deg, var(--fenici-magenta) 0%, var(--fenici-purple) 100%);
+}
+
+/* Nav attiva */
+.nav-active {
+    background: linear-gradient(135deg, var(--fenici-orange), var(--fenici-orange-hot)) !important;
+    color: #1a0a00 !important;
+    box-shadow: var(--fenici-glow-orange);
+}
+
+/* Input focus */
+input:focus, select:focus, textarea:focus {
+    border-color: var(--fenici-orange) !important;
+    box-shadow: 0 0 0 2px rgba(255, 107, 26, 0.2);
+    outline: none;
+}
+
+/* Badge ruolo */
+.badge-gestore {
+    background: rgba(255, 107, 26, 0.15);
+    color: var(--fenici-gold);
+    border: 1px solid rgba(255, 107, 26, 0.35);
+}
+
+/* Tabella hover */
+tr:hover {
+    background-color: rgba(255, 107, 26, 0.04);
+}
+
+/* Utility legacy (override Tailwind grigi verso viola scuro) */
+.bg-gray-900 { background-color: var(--fenici-black) !important; }
+.bg-gray-800 { background-color: var(--fenici-card) !important; }
+.bg-gray-800\/90 { background-color: rgba(26, 16, 37, 0.92) !important; }
+.bg-gray-800\/95 { background-color: rgba(26, 16, 37, 0.96) !important; }
+.bg-gray-700 { background-color: #2a1a38 !important; }
+.bg-gray-950 { background-color: #05030a !important; }
+.bg-gray-950\/80 { background-color: rgba(5, 3, 10, 0.85) !important; }
+.border-gray-700 { border-color: var(--fenici-border) !important; }
+.border-gray-600 { border-color: #4a3560 !important; }
+.border-gray-800 { border-color: #1e1228 !important; }
+.text-gray-100 { color: var(--fenici-text) !important; }
+.text-gray-200 { color: #e9d5ff !important; }
+.text-gray-300 { color: #d8b4fe !important; }
+.text-gray-400 { color: var(--fenici-muted) !important; }
+.text-gray-500 { color: #7c6a8a !important; }
+
+/* Amber → Fenici Orange/Gold */
+.text-amber-400 { color: var(--fenici-gold) !important; }
+.text-amber-500 { color: var(--fenici-orange) !important; }
+.bg-amber-500 { background: linear-gradient(135deg, var(--fenici-orange), var(--fenici-orange-hot)) !important; color: #1a0a00 !important; }
+.bg-amber-500\/10 { background-color: rgba(255, 107, 26, 0.1) !important; }
+.bg-amber-500\/20 { background-color: rgba(255, 107, 26, 0.18) !important; }
+.border-amber-500 { border-color: var(--fenici-orange) !important; }
+.border-amber-500\/20 { border-color: rgba(255, 107, 26, 0.25) !important; }
+.border-amber-500\/30 { border-color: rgba(255, 107, 26, 0.35) !important; }
+.border-amber-500\/40 { border-color: rgba(255, 107, 26, 0.4) !important; }
+.hover\:bg-amber-400:hover { background: linear-gradient(135deg, var(--fenici-gold), var(--fenici-orange)) !important; }
+.hover\:bg-amber-500:hover { background: linear-gradient(135deg, var(--fenici-gold), var(--fenici-orange)) !important; }
+.hover\:bg-amber-600:hover { background: linear-gradient(135deg, #e85d04, var(--fenici-orange-hot)) !important; }
+.hover\:border-amber-500:hover { border-color: var(--fenici-orange) !important; }
+.focus\:border-amber-500:focus { border-color: var(--fenici-orange) !important; }
+.focus\:ring-amber-500\/50:focus { --tw-ring-color: rgba(255, 107, 26, 0.5) !important; }
+.shadow-amber-500\/10 { box-shadow: 0 10px 25px -5px rgba(255, 107, 26, 0.15) !important; }
+.shadow-amber-500\/20 { box-shadow: 0 10px 25px -5px rgba(255, 107, 26, 0.25) !important; }
+.hover\:shadow-amber-500\/20:hover { box-shadow: 0 10px 30px -5px rgba(255, 107, 26, 0.3) !important; }
+
+/* Emerald → success soft green */
+.text-emerald-400 { color: #34d399 !important; }
+.bg-emerald-400\/10 { background-color: rgba(52, 211, 153, 0.12) !important; }
+.bg-emerald-600 { background-color: #059669 !important; }
+.hover\:bg-emerald-700:hover { background-color: #047857 !important; }
+
+/* Indigo → purple Fenici */
+.bg-indigo-600 { background: linear-gradient(135deg, var(--fenici-purple), var(--fenici-purple-deep)) !important; }
+.hover\:bg-indigo-700:hover { background: linear-gradient(135deg, var(--fenici-magenta), var(--fenici-purple)) !important; }
+.text-indigo-400 { color: #c084fc !important; }
+.shadow-indigo-500\/20 { box-shadow: 0 10px 25px -5px rgba(155, 77, 202, 0.25) !important; }
+
+/* Red accent */
+.bg-red-600 { background-color: #dc2626 !important; }
+.hover\:bg-red-700:hover { background-color: #b91c1c !important; }
+.bg-red-600\/20 { background-color: rgba(220, 38, 38, 0.2) !important; }
+.text-red-400 { color: #f87171 !important; }
+
+/* Hover grigi → viola */
+.hover\:bg-gray-600:hover { background-color: #3d2a55 !important; }
+.hover\:bg-gray-700\/60:hover { background-color: rgba(42, 26, 56, 0.6) !important; }
+.hover\:bg-gray-750\/50:hover { background-color: rgba(36, 24, 50, 0.5) !important; }
+.hover\:bg-gray-800:hover { background-color: var(--fenici-card-hover) !important; }
+.hover\:bg-gray-800\/80:hover { background-color: rgba(36, 24, 50, 0.8) !important; }
+
+/* Login card speciale */
+#login-page .bg-gray-800\/90 {
+    border: 1px solid rgba(255, 107, 26, 0.25) !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 107, 26, 0.08);
+}
+
+/* Nav bar */
+nav.bg-gray-800\/95 {
+    border-bottom: 1px solid rgba(157, 77, 202, 0.25) !important;
+    background: rgba(18, 10, 26, 0.95) !important;
+    backdrop-filter: blur(16px);
+}
+
+/* Footer */
+footer {
+    border-top: 1px solid rgba(157, 77, 202, 0.2) !important;
+    background: #05030a !important;
+}
+
+/* Quick sale cards hover */
+#quick-sales-yj-grid > div:hover,
+#quick-sales-fen-grid > div:hover {
+    border-color: var(--fenici-orange) !important;
+    box-shadow: 0 0 20px rgba(255, 107, 26, 0.2);
+}
+
+/* Inventory cards */
+#inventory-yj-grid > div:hover,
+#inventory-fen-grid > div:hover {
+    border-color: var(--fenici-orange) !important;
+    box-shadow: 0 0 18px rgba(255, 107, 26, 0.18);
+}
+
+/* Modal */
+#smart-action-modal .bg-gray-800,
+#custom-modal .bg-gray-800 {
+    border: 1px solid rgba(255, 107, 26, 0.3) !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6), var(--fenici-glow-orange);
+}
+
+/* Titoli */
+h1, h2, h3 {
+    letter-spacing: 0.02em;
+}
+
+/* Animazione leggera logo */
+#login-main-logo, #nav-main-logo {
+    filter: drop-shadow(0 0 12px rgba(255, 107, 26, 0.35));
+    transition: filter 0.3s ease;
+}
+#login-main-logo:hover, #nav-main-logo:hover {
+    filter: drop-shadow(0 0 20px rgba(255, 107, 26, 0.55));
+}
+
+/* Utility extra */
+.hover\:bg-gray-750:hover { background-color: #2a1a38; }
+.bg-gray-750 { background-color: #241832; }
+.bg-gray-850 { background-color: #140c1c; }
+
+
+/* ===== TOAST NOTIFICHE (angolo alto-destra) ===== */
+#toast-container {
+    position: fixed !important;
+    top: 5rem !important;
+    right: 1rem !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 200 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    max-width: min(360px, calc(100vw - 2rem));
+    width: auto !important;
+    pointer-events: none;
+}
+
+#toast-container > div {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+}
+
