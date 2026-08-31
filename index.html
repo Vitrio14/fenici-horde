@@ -480,7 +480,7 @@
             <!-- ========== SEZIONE ADMIN / GESTIONE ========== -->
             <section id="admin-section" class="hidden space-y-8">
 
-                <!-- Libreria Immagini PNG (Firestore, multi-file, no Storage) -->
+                <!-- Libreria Immagini PNG -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <h3 class="text-lg font-bold text-amber-400 mb-2"><i class="fa-solid fa-images mr-2"></i> Libreria Immagini Item (PNG)</h3>
                     <p class="text-gray-400 text-xs mb-4">Seleziona <strong class="text-amber-400">una o più PNG</strong> (max ~400 KB ciascuna). In Inventario le scegli per <strong class="text-amber-400">nome file</strong>.</p>
@@ -489,7 +489,7 @@
                             <label class="block text-xs font-medium text-gray-400 mb-1">File PNG (selezione multipla)</label>
                             <input type="file" id="item-image-file" accept="image/png,.png" multiple class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500 file:text-gray-900 file:font-bold file:text-xs">
                         </div>
-                        <button type="button" id="item-image-upload-btn" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
+                        <button type="button" id="item-image-upload-btn" onclick="window.uploadItemImagesFromInput()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
                             <i class="fa-solid fa-upload mr-1"></i> Carica PNG
                         </button>
                     </div>

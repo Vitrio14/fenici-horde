@@ -710,8 +710,8 @@ function initDatabaseListeners() {
     db.collection('item_images').onSnapshot(snapshot => {
         localItemImages = {};
         snapshot.forEach(doc => { localItemImages[doc.id] = doc.data(); });
-        renderItemImagesLibrary();
-        renderItemImageSelects();
+        if (typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
+        if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
     });
 }
 
@@ -845,23 +845,23 @@ if (stashForm) {
     });
 }
 
-// --- LIBRERIA IMMAGINI ITEM (click button, no form submit = no page reload) ---
+// --- LIBRERIA IMMAGINI ITEM (onclick sul bottone, niente form) ---
 const MAX_ITEM_IMAGE_BYTES = 400 * 1024;
 
 function renderItemImageSelects() {
     const opts = ['<option value="">— Nessuna / placeholder —</option>'];
-    Object.keys(localItemImages).sort((a, b) => {
+    Object.keys(localItemImages).sort(function (a, b) {
         return (localItemImages[a].fileName || '').localeCompare(localItemImages[b].fileName || '', undefined, { sensitivity: 'base' });
-    }).forEach(id => {
+    }).forEach(function (id) {
         opts.push('<option value="' + id + '">' + (localItemImages[id].fileName || id) + '</option>');
     });
-    const html = opts.join('');
-    ['inv-yj-admin-img', 'inv-fen-admin-img'].forEach(selId => {
+    const htmlOpts = opts.join('');
+    ['inv-yj-admin-img', 'inv-fen-admin-img'].forEach(function (selId) {
         const sel = document.getElementById(selId);
         if (!sel) return;
         const prev = sel.value;
-        sel.innerHTML = html;
-        if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+        sel.innerHTML = htmlOpts;
+        if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
     });
 }
 
@@ -873,18 +873,18 @@ function renderItemImagesLibrary() {
         grid.innerHTML = '<p class="col-span-full text-xs text-gray-500 italic">Nessuna immagine caricata.</p>';
         return;
     }
-    keys.sort((a, b) => (localItemImages[b].createdAt || 0) - (localItemImages[a].createdAt || 0));
+    keys.sort(function (a, b) { return (localItemImages[b].createdAt || 0) - (localItemImages[a].createdAt || 0); });
     grid.innerHTML = '';
-    keys.forEach(id => {
+    keys.forEach(function (id) {
         const img = localItemImages[id];
         const name = img.fileName || 'file.png';
         const card = document.createElement('div');
         card.className = 'relative bg-gray-900 border border-gray-700 rounded-xl overflow-hidden group';
         card.innerHTML =
             '<div class="h-20 flex items-center justify-center bg-gray-950 p-2">' +
-            '<img src="' + (img.dataUrl || '') + '" alt="' + name.replace(/"/g, '') + '" class="max-h-full max-w-full object-contain" onerror="this.style.opacity=\'0.3\'">' +
+            '<img src="' + (img.dataUrl || '') + '" alt="" class="max-h-full max-w-full object-contain">' +
             '</div><div class="p-2 border-t border-gray-800">' +
-            '<p class="text-[11px] text-amber-400 font-mono truncate" title="' + name.replace(/"/g, '') + '">' + name + '</p></div>' +
+            '<p class="text-[11px] text-amber-400 font-mono truncate">' + name + '</p></div>' +
             '<button type="button" class="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition" title="Elimina"><i class="fa-solid fa-trash"></i></button>';
         card.querySelector('button').addEventListener('click', function () {
             showConfirmModal('Elimina immagine', 'Rimuovere "' + name + '" dalla libreria?', function () {
@@ -906,16 +906,17 @@ function readFileAsDataURL(file) {
     });
 }
 
-async function uploadItemImagesFromInput() {
+window.uploadItemImagesFromInput = async function uploadItemImagesFromInput() {
+    console.log('[Fenici] upload immagini avviato', { role: userRole });
     try {
         if (userRole !== 'gestore') {
-            showToast('Solo il gestore può caricare immagini.', 'error');
+            showToast('Solo il gestore può caricare immagini. Accedi come gestore.', 'error');
             return;
         }
         var fileInput = document.getElementById('item-image-file');
         var files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
         if (files.length === 0) {
-            showToast('Seleziona uno o più file PNG.', 'warning');
+            showToast('Seleziona uno o più file PNG prima di caricare.', 'warning');
             return;
         }
 
@@ -967,46 +968,36 @@ async function uploadItemImagesFromInput() {
             } catch (err) {
                 fail++;
                 console.error(err);
-                showToast('Errore su "' + file.name + '": ' + (err.message || err), 'error');
+                var msg = (err && err.message) ? err.message : String(err);
+                if (msg.indexOf('permission') !== -1 || (err && err.code === 'permission-denied')) {
+                    showToast('Permesso negato su item_images. Controlla le regole Firestore e di essere loggato come gestore.', 'error');
+                } else {
+                    showToast('Errore su "' + file.name + '": ' + msg, 'error');
+                }
             }
         }
 
         if (fileInput) fileInput.value = '';
         if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
         if (statusEl) {
-            if (ok > 0) statusEl.textContent = 'Completato: ' + ok + ' caricate' + (skip ? ', ' + skip + ' saltate' : '') + '.';
-            else statusEl.textContent = 'Nessuna immagine nuova caricata.';
+            statusEl.textContent = ok > 0
+                ? ('Completato: ' + ok + ' caricate' + (skip ? ', ' + skip + ' saltate' : '') + '.')
+                : 'Nessuna immagine nuova caricata.';
         }
 
         if (ok > 0) showToast('Caricate ' + ok + ' immagini' + (skip ? ' (' + skip + ' saltate)' : '') + '.', 'success');
         else if (skip > 0 && fail === 0) showToast('Nessuna nuova immagine (già presenti o non valide).', 'warning');
-        else if (fail > 0) showToast('Caricamento fallito.', 'error');
+        else if (fail > 0) showToast('Caricamento fallito. Vedi console (F12).', 'error');
     } catch (err) {
         console.error('uploadItemImagesFromInput', err);
-        showToast('Errore upload: ' + (err.message || err), 'error');
+        showToast('Errore upload: ' + ((err && err.message) || err), 'error');
         var btn2 = document.getElementById('item-image-upload-btn');
-        if (btn2) { btn2.disabled = false; btn2.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Carica PNG'; }
+        if (btn2) {
+            btn2.disabled = false;
+            btn2.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Carica PNG';
+        }
     }
-}
-
-// Bind su click (type=button) → non ricarica la pagina
-(function bindItemImageUpload() {
-    function bind() {
-        var btn = document.getElementById('item-image-upload-btn');
-        if (!btn || btn.dataset.bound === '1') return;
-        btn.dataset.bound = '1';
-        btn.addEventListener('click', function (ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            uploadItemImagesFromInput();
-        });
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', bind);
-    } else {
-        bind();
-    }
-})();
+};
 
 
 // --- EMPLOYEE DROPDOWNS ---
