@@ -175,11 +175,17 @@ window.openSmartModal = function(type, itemId) {
     document.getElementById('smart-modal-custom-name-container').classList.add('hidden');
     document.getElementById('smart-modal-price-container').classList.add('hidden');
     document.getElementById('smart-modal-reason-container').classList.add('hidden');
+    const pctBox = document.getElementById('smart-modal-pct-container');
+    if (pctBox) pctBox.classList.add('hidden');
+    const freePreview = document.getElementById('smart-modal-free-preview');
+    if (freePreview) freePreview.classList.add('hidden');
 
     const titleEl = document.getElementById('smart-modal-title');
     const submitBtn = document.getElementById('smart-modal-submit');
     const priceInput = document.getElementById('smart-modal-price');
     document.getElementById('smart-modal-quantity').value = "1";
+    const freePctInput = document.getElementById('smart-modal-free-pct');
+    if (freePctInput) freePctInput.value = '';
 
     if (type === 'inv_yj' || type === 'inv_fen') {
         const item = type === 'inv_yj' ? localInventoryYJ[itemId] : localInventoryFen[itemId];
@@ -204,11 +210,15 @@ window.openSmartModal = function(type, itemId) {
         titleEl.innerHTML = `<i class="fa-solid fa-bolt mr-2"></i> Nuova Vendita Libera`;
         document.getElementById('smart-modal-custom-name-container').classList.remove('hidden');
         document.getElementById('smart-modal-price-container').classList.remove('hidden');
-        document.getElementById('smart-modal-price-label').textContent = "Costo Totale (€)";
+        if (pctBox) pctBox.classList.remove('hidden');
+        document.getElementById('smart-modal-price-label').textContent = "Prezzo base senza % (€)";
         priceInput.value = '';
         priceInput.disabled = false;
+        // Default % guadagno Yellow: 40 (editabile). Lo stipendio usa SEMPRE la % personale del dipendente.
+        if (freePctInput) freePctInput.value = 40;
         submitBtn.textContent = "Registra Vendita";
         submitBtn.className = "w-full py-3 bg-amber-500 hover:bg-amber-600 text-gray-900 font-extrabold rounded-xl transition transform active:scale-95 shadow-lg mt-4";
+        if (typeof updateFreeSalePreview === 'function') updateFreeSalePreview();
     }
 
     modal.classList.remove('hidden');
@@ -217,6 +227,51 @@ window.openSmartModal = function(type, itemId) {
         box.classList.add('scale-100', 'opacity-100');
     }, 10);
 };
+
+function updateFreeSalePreview() {
+    const preview = document.getElementById('smart-modal-free-preview');
+    if (!preview) return;
+    const baseUnit = parseFloat(document.getElementById('smart-modal-price')?.value);
+    const pct = parseFloat(document.getElementById('smart-modal-free-pct')?.value);
+    const qty = parseInt(document.getElementById('smart-modal-quantity')?.value) || 1;
+    if (isNaN(baseUnit) || baseUnit < 0 || isNaN(pct) || pct < 0) {
+        preview.classList.add('hidden');
+        return;
+    }
+    // % inserita = guadagno Yellow; stipendio = % personale dipendente
+    const empId = document.getElementById('smart-modal-employee')?.value;
+    let empPct = 40;
+    if (empId && localEmployees[empId] && localEmployees[empId].customPercentage != null && localEmployees[empId].customPercentage !== '') {
+        empPct = parseFloat(localEmployees[empId].customPercentage) || 40;
+    } else if (userRole === 'dipendente' && currentEmployeeId && localEmployees[currentEmployeeId]?.customPercentage != null) {
+        empPct = parseFloat(localEmployees[currentEmployeeId].customPercentage) || 40;
+    }
+    const priceWithoutPct = baseUnit * qty;
+    const yellowGain = priceWithoutPct * (pct / 100);
+    const totalPrice = priceWithoutPct + yellowGain;
+    const employeeGain = yellowGain * (empPct / 100);
+    const elBase = document.getElementById('preview-base');
+    const elYellow = document.getElementById('preview-yellow');
+    const elTotal = document.getElementById('preview-total');
+    const elEmp = document.getElementById('preview-emp');
+    if (elBase) elBase.textContent = formatValuta(priceWithoutPct);
+    if (elYellow) elYellow.textContent = formatValuta(yellowGain) + ' (' + pct + '%)';
+    if (elTotal) elTotal.textContent = formatValuta(totalPrice);
+    if (elEmp) elEmp.textContent = formatValuta(employeeGain) + ' (su ' + empPct + '% pers.)';
+    preview.classList.remove('hidden');
+}
+
+['smart-modal-price', 'smart-modal-free-pct', 'smart-modal-quantity', 'smart-modal-employee'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => {
+        const box = document.getElementById('smart-modal-pct-container');
+        if (box && !box.classList.contains('hidden')) updateFreeSalePreview();
+    });
+    if (el) el.addEventListener('change', () => {
+        const box = document.getElementById('smart-modal-pct-container');
+        if (box && !box.classList.contains('hidden')) updateFreeSalePreview();
+    });
+});
 
 window.closeSmartModal = function() {
     const modal = document.getElementById('smart-action-modal');
@@ -298,19 +353,31 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
 
         if (type.includes('custom')) {
             const name = document.getElementById('smart-modal-custom-name').value.trim();
-            const totalCostInput = parseFloat(document.getElementById('smart-modal-price').value);
-            if (!name || isNaN(totalCostInput)) {
-                showToast("Compila nome e importo.", "warning");
+            const baseUnit = parseFloat(document.getElementById('smart-modal-price').value);
+            const freePct = parseFloat(document.getElementById('smart-modal-free-pct')?.value);
+            if (!name || isNaN(baseUnit) || baseUnit < 0) {
+                showToast("Compila nome e prezzo base.", "warning");
                 return;
             }
-            const finalTotalPrice = totalCostInput * qty;
-            const yellowGain = finalTotalPrice;
-            const employeeGain = (yellowGain * empPct) / 100;
+            if (isNaN(freePct) || freePct < 0) {
+                showToast("Inserisci la % guadagno Yellow (≥ 0).", "warning");
+                return;
+            }
+            // % inserita = guadagno Yellow (aggiunta sul prezzo base)
+            // Guadagno dipendente = yellowGain * (% personale del dipendente)
+            const priceWithoutPct = baseUnit * qty;
+            const yellowGain = priceWithoutPct * (freePct / 100);
+            const finalTotalPrice = priceWithoutPct + yellowGain;
+            const employeeGain = yellowGain * (empPct / 100);
             saleData.serviceName = "[LIBERO] " + name;
             saleData.totalPrice = finalTotalPrice;
+            saleData.priceWithoutPct = priceWithoutPct;
+            saleData.freePercentage = freePct;
+            saleData.isFreeSale = true;
             saleData.yellowCost = 0;
             saleData.yellowGain = yellowGain;
             saleData.employeeGain = employeeGain;
+            saleData.appliedPercentage = empPct; // % personale dipendente
         } else {
             const item = catalog[itemId];
             const finalTotalPrice = item.price * qty;
@@ -1240,14 +1307,25 @@ function renderSalesTableGeneric(tbodyId, salesObj, filterId, isYJ) {
     }
 
     salesArray.forEach(sale => {
+        const isFree = sale.isFreeSale || (sale.serviceName && String(sale.serviceName).startsWith('[LIBERO]'));
+        let totaleCell, yellowCell, spettCell;
+        if (isFree && sale.priceWithoutPct != null) {
+            totaleCell = `<div class="leading-tight"><div class="text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</div><div class="text-[10px] text-gray-500">con ${sale.freePercentage}% Y</div><div class="text-[10px] text-gray-400">senza: ${formatValuta(sale.priceWithoutPct)}</div></div>`;
+            yellowCell = `<span class="text-amber-400 font-semibold">${formatValuta(sale.yellowGain)}</span><div class="text-[10px] text-gray-500">${sale.freePercentage}% su base</div>`;
+            spettCell = `<span class="text-indigo-400 font-semibold">${formatValuta(sale.employeeGain)}</span> <span class="text-[10px] text-gray-500">(${sale.appliedPercentage}% pers.)</span>`;
+        } else {
+            totaleCell = `<span class="text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</span>`;
+            yellowCell = formatValuta(sale.yellowGain);
+            spettCell = `${formatValuta(sale.employeeGain)} <span class="text-[10px] text-gray-500">(${sale.appliedPercentage}%)</span>`;
+        }
         tbody.innerHTML += `
             <tr class="hover:bg-gray-750/50 transition border-b border-gray-800">
                 <td class="py-3 text-xs text-gray-400">${sale.dateString.split(',')[0]}</td>
                 <td class="py-3 font-semibold text-amber-400">${sale.employeeName}</td>
                 <td class="py-3 text-gray-300 text-xs">${sale.serviceName} <span class="text-[10px] text-gray-500">x${sale.quantity || 1}</span></td>
-                <td class="py-3 text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</td>
-                <td class="py-3 text-gray-300">${formatValuta(sale.yellowGain)}</td>
-                <td class="py-3 text-indigo-400 font-semibold">${formatValuta(sale.employeeGain)} <span class="text-[10px] text-gray-500">(${sale.appliedPercentage}%)</span></td>
+                <td class="py-3">${totaleCell}</td>
+                <td class="py-3">${yellowCell}</td>
+                <td class="py-3 text-indigo-400 font-semibold">${spettCell}</td>
                 <td class="py-3 text-right">
                     <button onclick="window.deleteSaleItem('${sale.key}', ${isYJ})" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition" title="Elimina">
                         <i class="fa-solid fa-trash text-[10px]"></i>
@@ -1302,14 +1380,25 @@ function renderSalesArchiveWindowGeneric(containerId, filterId, activityFilter) 
 
         let rows = '';
         weekSales.forEach(sale => {
+            const isFree = sale.isFreeSale || (sale.serviceName && String(sale.serviceName).startsWith('[LIBERO]'));
+            let lordoCell, yellowCell, spettCell;
+            if (isFree && sale.priceWithoutPct != null) {
+                lordoCell = `<div class="leading-tight"><span class="text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</span><div class="text-[9px] text-gray-500">con ${sale.freePercentage}% Y · senza ${formatValuta(sale.priceWithoutPct)}</div></div>`;
+                yellowCell = `${formatValuta(sale.yellowGain)} <span class="text-[9px] text-amber-400">(${sale.freePercentage}%)</span>`;
+                spettCell = `${formatValuta(sale.employeeGain)} <span class="text-[9px] text-gray-500">(${sale.appliedPercentage}% pers.)</span>`;
+            } else {
+                lordoCell = formatValuta(sale.totalPrice);
+                yellowCell = formatValuta(sale.yellowGain);
+                spettCell = formatValuta(sale.employeeGain);
+            }
             rows += `
                 <tr class="hover:bg-gray-800/80 border-b border-gray-800/50">
                     <td class="py-2 px-2 text-xs text-gray-400">${sale.dateString}</td>
                     <td class="py-2 px-2 text-xs font-bold text-amber-400">${sale.employeeName}</td>
                     <td class="py-2 px-2 text-xs text-gray-200">${sale.serviceName} <span class="text-[10px] text-gray-500">x${sale.quantity || 1}</span></td>
-                    <td class="py-2 px-2 text-xs text-emerald-400 font-bold">${formatValuta(sale.totalPrice)}</td>
-                    <td class="py-2 px-2 text-xs text-gray-400">${formatValuta(sale.yellowGain)}</td>
-                    <td class="py-2 px-2 text-xs text-indigo-400 font-bold">${formatValuta(sale.employeeGain)}</td>
+                    <td class="py-2 px-2 text-xs text-emerald-400 font-bold">${lordoCell}</td>
+                    <td class="py-2 px-2 text-xs text-gray-400">${yellowCell}</td>
+                    <td class="py-2 px-2 text-xs text-indigo-400 font-bold">${spettCell}</td>
                 </tr>
             `;
         });

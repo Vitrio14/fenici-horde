@@ -78,6 +78,22 @@
                     </div>
                 </div>
 
+                <!-- Percentuale solo per vendita libera: % = guadagno Yellow; stipendio = % personale dipendente -->
+                <div id="smart-modal-pct-container" class="hidden">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">% Guadagno Yellow (aggiunta sul prezzo base)</label>
+                    <input type="number" step="0.01" min="0" id="smart-modal-free-pct" placeholder="es. 40" class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500 shadow-inner font-bold text-amber-400 text-center">
+                    <p class="text-[10px] text-gray-500 mt-1.5 leading-snug">
+                        La % che inserisci è il <strong class="text-amber-400">guadagno Yellow</strong> (aggiunto al prezzo base).<br>
+                        Il guadagno del dipendente si calcola sulla <strong class="text-indigo-400">% personale</strong> del profilo.
+                    </p>
+                    <div id="smart-modal-free-preview" class="mt-2 p-2.5 rounded-xl bg-gray-900/80 border border-gray-700 text-xs space-y-1 hidden">
+                        <div class="flex justify-between gap-2"><span class="text-gray-400">Prezzo senza %</span><span id="preview-base" class="text-gray-200 font-semibold">€ 0,00</span></div>
+                        <div class="flex justify-between gap-2"><span class="text-gray-400">Guadagno Yellow (%)</span><span id="preview-yellow" class="text-amber-400 font-bold">€ 0,00</span></div>
+                        <div class="flex justify-between gap-2"><span class="text-gray-400">Prezzo con % (totale)</span><span id="preview-total" class="text-emerald-400 font-bold">€ 0,00</span></div>
+                        <div class="flex justify-between gap-2"><span class="text-gray-400">Guadagno dipendente</span><span id="preview-emp" class="text-indigo-400 font-bold">€ 0,00</span></div>
+                    </div>
+                </div>
+
                 <div id="smart-modal-reason-container" class="hidden">
                     <label class="block text-xs font-medium text-gray-400 mb-1">Motivo (Opzionale)</label>
                     <input type="text" id="smart-modal-reason" placeholder="Es. Manutenzione, Rifornimento..." class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500 shadow-inner">
