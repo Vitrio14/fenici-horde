@@ -657,7 +657,73 @@ navInventoryYjBtn.addEventListener('click', () => showSection('inventory-yj'));
 navInventoryFenBtn.addEventListener('click', () => showSection('inventory-fen'));
 navAdminBtn.addEventListener('click', () => showSection('admin'));
 
+let currentSectionId = 'sales-yj';
+
+function isSectionVisible(section) {
+    return currentSectionId === section;
+}
+function isAdminOpen() {
+    return currentSectionId === 'admin' && userRole === 'gestore';
+}
+function scheduleUI(fn, delay) {
+    const run = function () {
+        try { fn(); } catch (e) { console.error(e); }
+    };
+    if (delay && delay > 0) {
+        setTimeout(function () {
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 600 });
+            else run();
+        }, delay);
+    } else if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 400 });
+    } else {
+        setTimeout(run, 0);
+    }
+}
+
+function refreshActiveSectionUI() {
+    switch (currentSectionId) {
+        case 'sales-yj':
+            if (typeof renderQuickSalesYjGrid === 'function') renderQuickSalesYjGrid();
+            if (typeof renderSalesYjTable === 'function') renderSalesYjTable();
+            if (typeof renderSalesYjDropdowns === 'function') renderSalesYjDropdowns();
+            if (typeof renderSalesArchiveWindowYJ === 'function') renderSalesArchiveWindowYJ(localArchive);
+            break;
+        case 'sales-fen':
+            if (typeof renderQuickSalesFenGrid === 'function') renderQuickSalesFenGrid();
+            if (typeof renderSalesFenTable === 'function') renderSalesFenTable();
+            if (typeof renderSalesFenDropdowns === 'function') renderSalesFenDropdowns();
+            if (typeof renderSalesArchiveWindowFen === 'function') renderSalesArchiveWindowFen(localArchive);
+            break;
+        case 'inventory-yj':
+            if (typeof renderStashDropdowns === 'function') renderStashDropdowns();
+            if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+            if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
+            if (typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
+            break;
+        case 'inventory-fen':
+            if (typeof renderStashDropdowns === 'function') renderStashDropdowns();
+            if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+            if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
+            if (typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
+            break;
+        case 'admin':
+            if (typeof renderCatalogYJ === 'function') renderCatalogYJ();
+            if (typeof renderCatalogFen === 'function') renderCatalogFen();
+            if (typeof renderEmployees === 'function') renderEmployees();
+            if (typeof renderCustomStashesList === 'function') renderCustomStashesList();
+            if (typeof calculateManagementData === 'function') calculateManagementData();
+            if (typeof renderArchive === 'function') renderArchive(localArchive);
+            if (typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
+            if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
+            break;
+        default:
+            break;
+    }
+}
+
 function showSection(section) {
+    currentSectionId = section;
     [salesYjSection, salesFenSection, inventoryYjSection, inventoryFenSection, adminSection].forEach(s => s && s.classList.add('hidden'));
     
     const inactiveClass = "px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm";
@@ -668,7 +734,6 @@ function showSection(section) {
         const wasHidden = b.classList.contains('hidden');
         b.className = inactiveClass + (wasHidden ? ' hidden' : '');
     });
-
 
     if (section === 'sales-yj') {
         salesYjSection.classList.remove('hidden');
@@ -686,104 +751,158 @@ function showSection(section) {
         adminSection.classList.remove('hidden');
         navAdminBtn.className = activeClass;
     }
+
+    // Disegna solo la sezione aperta (dati già in memoria)
+    scheduleUI(function () { refreshActiveSectionUI(); });
 }
 
-// --- LISTENERS FIRESTORE ---
+// --- LISTENERS FIRESTORE (avvio a fasi + render solo sezione attiva) ---
+let listenersStarted = false;
+
 function initDatabaseListeners() {
-    db.collection('custom_stashes').onSnapshot(snapshot => {
-        localStashes = {};
-        snapshot.forEach(doc => { localStashes[doc.id] = doc.data(); });
-        renderStashDropdowns();
-        renderCustomStashesList();
-        renderInventoryYjGrid();
-        renderInventoryFenGrid();
+    if (listenersStarted) return;
+    listenersStarted = true;
+
+    // FASE 1: essenziali subito
+    db.collection('employees').onSnapshot(snapshot => {
+        localEmployees = {};
+        snapshot.forEach(doc => { localEmployees[doc.id] = doc.data(); });
+        scheduleUI(function () {
+            if (typeof renderAllEmployeeDropdowns === 'function') renderAllEmployeeDropdowns();
+            if (typeof renderAdminFilterDropdown === 'function') renderAdminFilterDropdown();
+            if (isAdminOpen() && typeof renderEmployees === 'function') renderEmployees();
+        });
     });
 
-    // Cataloghi separati
     db.collection('catalog').onSnapshot(snapshot => {
         localCatalogYJ = {};
         snapshot.forEach(doc => { localCatalogYJ[doc.id] = doc.data(); });
-        renderCatalogYJ();
-        renderSalesYjDropdowns();
-        renderQuickSalesYjGrid();
+        scheduleUI(function () {
+            if (isSectionVisible('sales-yj')) {
+                if (typeof renderSalesYjDropdowns === 'function') renderSalesYjDropdowns();
+                if (typeof renderQuickSalesYjGrid === 'function') renderQuickSalesYjGrid();
+            }
+            if (isAdminOpen() && typeof renderCatalogYJ === 'function') renderCatalogYJ();
+        });
     });
 
     db.collection('catalog_fen').onSnapshot(snapshot => {
         localCatalogFen = {};
         snapshot.forEach(doc => { localCatalogFen[doc.id] = doc.data(); });
-        renderCatalogFen();
-        renderSalesFenDropdowns();
-        renderQuickSalesFenGrid();
+        scheduleUI(function () {
+            if (isSectionVisible('sales-fen')) {
+                if (typeof renderSalesFenDropdowns === 'function') renderSalesFenDropdowns();
+                if (typeof renderQuickSalesFenGrid === 'function') renderQuickSalesFenGrid();
+            }
+            if (isAdminOpen() && typeof renderCatalogFen === 'function') renderCatalogFen();
+        });
     });
 
-    db.collection('employees').onSnapshot(snapshot => {
-        localEmployees = {};
-        snapshot.forEach(doc => { localEmployees[doc.id] = doc.data(); });
-        renderEmployees();
-        renderAllEmployeeDropdowns();
-        renderAdminFilterDropdown();
-    });
+    // FASE 2: vendite / depositi
+    setTimeout(function () {
+        db.collection('custom_stashes').onSnapshot(snapshot => {
+            localStashes = {};
+            snapshot.forEach(doc => { localStashes[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (typeof renderStashDropdowns === 'function') renderStashDropdowns();
+                if (isAdminOpen() && typeof renderCustomStashesList === 'function') renderCustomStashesList();
+                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+            });
+        });
 
-    db.collection('current_salaries_status').onSnapshot(snapshot => {
-        localSalariesStatus = {};
-        snapshot.forEach(doc => { localSalariesStatus[doc.id] = doc.data().status || 'non_pagato'; });
-        calculateManagementData();
-    });
+        db.collection('current_sales').onSnapshot(snapshot => {
+            localSalesYJ = {};
+            snapshot.forEach(doc => { localSalesYJ[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (isSectionVisible('sales-yj') && typeof renderSalesYjTable === 'function') renderSalesYjTable();
+                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+            });
+        });
 
-    db.collection('current_sales').onSnapshot(snapshot => {
-        localSalesYJ = {};
-        snapshot.forEach(doc => { localSalesYJ[doc.id] = doc.data(); });
-        renderSalesYjTable();
-        calculateManagementData();
-    });
+        db.collection('current_sales_fen').onSnapshot(snapshot => {
+            localSalesFen = {};
+            snapshot.forEach(doc => { localSalesFen[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (isSectionVisible('sales-fen') && typeof renderSalesFenTable === 'function') renderSalesFenTable();
+                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+            });
+        });
 
-    db.collection('current_sales_fen').onSnapshot(snapshot => {
-        localSalesFen = {};
-        snapshot.forEach(doc => { localSalesFen[doc.id] = doc.data(); });
-        renderSalesFenTable();
-        calculateManagementData();
-    });
+        db.collection('current_salaries_status').onSnapshot(snapshot => {
+            localSalariesStatus = {};
+            snapshot.forEach(doc => { localSalariesStatus[doc.id] = doc.data().status || 'non_pagato'; });
+            scheduleUI(function () {
+                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+            });
+        });
+    }, 80);
 
-    db.collection('inventory_items').onSnapshot(snapshot => {
-        localInventoryYJ = {};
-        snapshot.forEach(doc => { localInventoryYJ[doc.id] = doc.data(); });
-        renderInventoryYjGrid();
-        renderInventoryYjDropdowns();
-    });
+    // FASE 3: inventari
+    setTimeout(function () {
+        db.collection('inventory_items').onSnapshot(snapshot => {
+            localInventoryYJ = {};
+            snapshot.forEach(doc => { localInventoryYJ[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (isSectionVisible('inventory-yj')) {
+                    if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+                    if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
+                }
+            });
+        });
 
-    db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-        localInventoryYJLogs = [];
-        snapshot.forEach(doc => { localInventoryYJLogs.push({ id: doc.id, ...doc.data() }); });
-        renderInventoryYjLogs();
-    });
+        db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
+            localInventoryYJLogs = [];
+            snapshot.forEach(doc => { localInventoryYJLogs.push({ id: doc.id, ...doc.data() }); });
+            scheduleUI(function () {
+                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
+            });
+        });
 
-    db.collection('fenici_items').onSnapshot(snapshot => {
-        localInventoryFen = {};
-        snapshot.forEach(doc => { localInventoryFen[doc.id] = doc.data(); });
-        renderInventoryFenGrid();
-        renderInventoryFenDropdowns();
-    });
+        db.collection('fenici_items').onSnapshot(snapshot => {
+            localInventoryFen = {};
+            snapshot.forEach(doc => { localInventoryFen[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (isSectionVisible('inventory-fen')) {
+                    if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+                    if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
+                }
+            });
+        });
 
-    db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-        localInventoryFenLogs = [];
-        snapshot.forEach(doc => { localInventoryFenLogs.push({ id: doc.id, ...doc.data() }); });
-        renderInventoryFenLogs();
-    });
+        db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
+            localInventoryFenLogs = [];
+            snapshot.forEach(doc => { localInventoryFenLogs.push({ id: doc.id, ...doc.data() }); });
+            scheduleUI(function () {
+                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
+            });
+        });
+    }, 200);
 
-    db.collection('archive').onSnapshot(snapshot => {
-        localArchive = {};
-        snapshot.forEach(doc => { localArchive[doc.id] = doc.data(); });
-        renderArchive(localArchive);
-        renderSalesArchiveWindowYJ(localArchive);
-        renderSalesArchiveWindowFen(localArchive);
-    });
+    // FASE 4: archivio + immagini (più pesanti)
+    setTimeout(function () {
+        db.collection('archive').onSnapshot(snapshot => {
+            localArchive = {};
+            snapshot.forEach(doc => { localArchive[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (isSectionVisible('sales-yj') && typeof renderSalesArchiveWindowYJ === 'function') renderSalesArchiveWindowYJ(localArchive);
+                if (isSectionVisible('sales-fen') && typeof renderSalesArchiveWindowFen === 'function') renderSalesArchiveWindowFen(localArchive);
+                if (isAdminOpen() && typeof renderArchive === 'function') renderArchive(localArchive);
+            });
+        });
 
-    db.collection('item_images').onSnapshot(snapshot => {
-        localItemImages = {};
-        snapshot.forEach(doc => { localItemImages[doc.id] = doc.data(); });
-        if (typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
-        if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
-    });
+        db.collection('item_images').onSnapshot(snapshot => {
+            localItemImages = {};
+            snapshot.forEach(doc => { localItemImages[doc.id] = doc.data(); });
+            scheduleUI(function () {
+                if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
+                if (isAdminOpen() && typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
+                // se sei in inventario, rinfresca griglia (icone)
+                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+            }, 40);
+        });
+    }, 350);
 }
 
 // Protezione
