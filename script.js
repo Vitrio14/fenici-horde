@@ -1104,6 +1104,44 @@ function compressImageToDataUrl(file, maxPx, maxBytes) {
     });
 }
 
+/** Comprime un dataUrl già in memoria (item vecchi senza match in libreria). */
+function compressDataUrlToThumb(dataUrl, maxPx, maxBytes) {
+    maxPx = maxPx || ITEM_IMAGE_MAX_PX;
+    maxBytes = maxBytes || MAX_ITEM_IMAGE_BYTES;
+    return new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var w = img.naturalWidth || img.width;
+                var h = img.naturalHeight || img.height;
+                var scale = Math.min(1, maxPx / Math.max(w, h, 1));
+                var tw = Math.max(1, Math.round(w * scale));
+                var th = Math.max(1, Math.round(h * scale));
+                var canvas = document.createElement('canvas');
+                canvas.width = tw;
+                canvas.height = th;
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, tw, th);
+                ctx.drawImage(img, 0, 0, tw, th);
+                var out = canvas.toDataURL('image/png');
+                if (out.length > maxBytes * 1.37) {
+                    var jpeg = canvas.toDataURL('image/jpeg', 0.8);
+                    if (jpeg.length < out.length) out = jpeg;
+                }
+                if (out.length > maxBytes * 1.37 && maxPx > 80) {
+                    compressDataUrlToThumb(dataUrl, Math.floor(maxPx * 0.7), maxBytes).then(resolve).catch(reject);
+                    return;
+                }
+                resolve(out);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        img.onerror = function () { reject(new Error('DataUrl non leggibile')); };
+        img.src = dataUrl;
+    });
+}
+
 function renderItemImageSelects() {
     const opts = ['<option value="">— Nessuna / placeholder —</option>'];
     Object.keys(localItemImages).sort(function (a, b) {
@@ -1256,6 +1294,187 @@ window.uploadItemImagesFromInput = async function uploadItemImagesFromInput() {
             btn2.disabled = false;
             btn2.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Carica PNG';
         }
+    }
+};
+
+/**
+ * Collega gli oggetti inventario alla libreria immagini (per nome file / imageId)
+ * e rimuove i dataUrl pesanti dai documenti item. Solo gestore.
+ * Flusso: 1) ricarica immagini compresse in libreria (stesso nome file)
+ *         2) premi questo pulsante
+ */
+window.optimizeInventoryItemImages = async function optimizeInventoryItemImages() {
+    if (userRole !== 'gestore') {
+        showToast('Solo il gestore può ottimizzare le immagini inventario.', 'error');
+        return;
+    }
+    const libKeys = Object.keys(localItemImages);
+    if (libKeys.length === 0) {
+        showToast('Libreria vuota. Prima carica le immagini compresse.', 'warning');
+        return;
+    }
+
+    const statusEl = document.getElementById('optimize-inventory-status');
+    const btn = document.getElementById('optimize-inventory-images-btn');
+    const prevHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Ottimizzo...';
+    }
+    if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = 'Analisi oggetti inventario...';
+    }
+
+    try {
+        // Mappa libreria: nome file normalizzato → { id, dataUrl, fileName, size }
+        const byName = {};
+        libKeys.forEach(function (id) {
+            const img = localItemImages[id];
+            const fn = (img.fileName || '').trim().toLowerCase();
+            if (fn) byName[fn] = { id: id, dataUrl: img.dataUrl || '', fileName: img.fileName || '', size: img.size || 0 };
+        });
+
+        function findLibMatch(item) {
+            if (item.imageId && localItemImages[item.imageId]) {
+                const img = localItemImages[item.imageId];
+                return { id: item.imageId, dataUrl: img.dataUrl || '', fileName: img.fileName || item.imageFileName || '', size: img.size || 0 };
+            }
+            const fn = (item.imageFileName || '').trim().toLowerCase();
+            if (fn && byName[fn]) return byName[fn];
+            // Prova nome oggetto ≈ nome file (senza estensione)
+            const nameKey = (item.name || '').trim().toLowerCase();
+            if (nameKey) {
+                for (const fn in byName) {
+                    const base = fn.replace(/\.(png|jpe?g|webp)$/i, '');
+                    if (base === nameKey || fn === nameKey) return byName[fn];
+                }
+            }
+            return null;
+        }
+
+        function needsOptimize(item, match) {
+            if (!match) return false;
+            // Ha dataUrl grosso oppure manca imageId o imageUrl non allineato
+            const heavy = item.imageUrl && item.imageUrl.length > 55000;
+            const missingId = !item.imageId || item.imageId !== match.id;
+            const hasEmbedded = !!(item.imageUrl && item.imageUrl.indexOf('data:') === 0);
+            return heavy || missingId || hasEmbedded;
+        }
+
+        const jobs = [];
+        Object.keys(localInventoryYJ).forEach(function (id) {
+            const item = localInventoryYJ[id];
+            const match = findLibMatch(item);
+            if (match && needsOptimize(item, match)) {
+                jobs.push({ collection: 'inventory_items', id: id, match: match, name: item.name, mode: 'link' });
+            } else if (!match && item.imageUrl && item.imageUrl.indexOf('data:') === 0 && item.imageUrl.length > 55000) {
+                jobs.push({ collection: 'inventory_items', id: id, name: item.name, mode: 'compress', imageUrl: item.imageUrl });
+            }
+        });
+        Object.keys(localInventoryFen).forEach(function (id) {
+            const item = localInventoryFen[id];
+            const match = findLibMatch(item);
+            if (match && needsOptimize(item, match)) {
+                jobs.push({ collection: 'fenici_items', id: id, match: match, name: item.name, mode: 'link' });
+            } else if (!match && item.imageUrl && item.imageUrl.indexOf('data:') === 0 && item.imageUrl.length > 55000) {
+                jobs.push({ collection: 'fenici_items', id: id, name: item.name, mode: 'compress', imageUrl: item.imageUrl });
+            }
+        });
+
+        if (jobs.length === 0) {
+            showToast('Nessun item da ottimizzare (già collegati o nessun match per nome file).', 'info');
+            if (statusEl) statusEl.textContent = 'Nessuna modifica necessaria. Controlla che i nomi file in libreria coincidano con imageFileName degli item.';
+            if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+            return;
+        }
+
+        const nLink = jobs.filter(function (j) { return j.mode === 'link'; }).length;
+        const nComp = jobs.filter(function (j) { return j.mode === 'compress'; }).length;
+
+        showConfirmModal(
+            'Ottimizza immagini inventario',
+            'Trovati ' + jobs.length + ' oggetti: ' + nLink + ' collegabili alla libreria, ' + nComp + ' da comprimere sul posto. Continuare?',
+            async function () {
+                let done = 0;
+                let fail = 0;
+
+                // 1) Job "link" in batch
+                const linkJobs = jobs.filter(function (j) { return j.mode === 'link'; });
+                const chunkSize = 200;
+                for (let i = 0; i < linkJobs.length; i += chunkSize) {
+                    const chunk = linkJobs.slice(i, i + chunkSize);
+                    const batch = db.batch();
+                    chunk.forEach(function (job) {
+                        const ref = db.collection(job.collection).doc(job.id);
+                        const update = {
+                            imageId: job.match.id,
+                            imageFileName: job.match.fileName || ''
+                        };
+                        if (job.match.dataUrl && job.match.dataUrl.length < 55000) {
+                            update.imageUrl = job.match.dataUrl;
+                        } else {
+                            update.imageUrl = firebase.firestore.FieldValue.delete();
+                        }
+                        batch.update(ref, update);
+                    });
+                    try {
+                        await batch.commit();
+                        done += chunk.length;
+                        if (statusEl) statusEl.textContent = 'Collegati ' + done + ' / ' + jobs.length + '...';
+                    } catch (err) {
+                        console.error(err);
+                        fail += chunk.length;
+                    }
+                }
+
+                // 2) Job "compress" uno a uno (canvas)
+                const compJobs = jobs.filter(function (j) { return j.mode === 'compress'; });
+                for (let i = 0; i < compJobs.length; i++) {
+                    const job = compJobs[i];
+                    if (statusEl) statusEl.textContent = 'Comprimo ' + (i + 1) + '/' + compJobs.length + ': ' + (job.name || job.id);
+                    try {
+                        const compressed = await compressDataUrlToThumb(job.imageUrl, ITEM_IMAGE_MAX_PX, MAX_ITEM_IMAGE_BYTES);
+                        await db.collection(job.collection).doc(job.id).update({ imageUrl: compressed });
+                        done++;
+                    } catch (err) {
+                        console.error(err);
+                        fail++;
+                    }
+                }
+
+                if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+                if (fail === 0) {
+                    showToast('Ottimizzati ' + done + ' oggetti inventario!', 'success');
+                    if (statusEl) statusEl.textContent = 'Completato: ' + done + ' item aggiornati (libreria + compressione).';
+                } else {
+                    showToast('Completati ' + done + ', errori su ~' + fail + '.', 'warning');
+                    if (statusEl) statusEl.textContent = 'Parziale: ok ' + done + ', errori ' + fail + '.';
+                }
+            },
+            false
+        );
+
+        // Se l'utente annulla, riabilita il bottone quando chiude il modal
+        // (il confirm gestisce solo onConfirm; riabilita dopo un po' se ancora disabled)
+        setTimeout(function () {
+            if (btn && btn.disabled) {
+                // Modal ancora aperto o annullato: se annullato modalCallback null dopo close
+            }
+        }, 100);
+        // Riabilita sempre dopo chiusura modal via listener una tantum
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const onCancelReenable = function () {
+            if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+            cancelBtn.removeEventListener('click', onCancelReenable);
+        };
+        if (cancelBtn) cancelBtn.addEventListener('click', onCancelReenable);
+
+    } catch (err) {
+        console.error('optimizeInventoryItemImages', err);
+        showToast('Errore ottimizzazione: ' + ((err && err.message) || err), 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = prevHtml; }
+        if (statusEl) statusEl.textContent = 'Errore: ' + ((err && err.message) || err);
     }
 };
 
