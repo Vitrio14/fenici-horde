@@ -252,6 +252,7 @@
                                     <th class="pb-3 pt-2">Totale Incassato</th>
                                     <th class="pb-3 pt-2">Guadagno Yellow</th>
                                     <th class="pb-3 pt-2">Spett. Corp</th>
+                                    <th class="pb-3 pt-2 text-right">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody id="current-sales-yj-table" class="divide-y divide-gray-700 text-sm">
@@ -310,6 +311,7 @@
                                     <th class="pb-3 pt-2">Totale Incassato</th>
                                     <th class="pb-3 pt-2">Guadagno Yellow</th>
                                     <th class="pb-3 pt-2">Spett. Corp</th>
+                                    <th class="pb-3 pt-2 text-right">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody id="current-sales-fen-table" class="divide-y divide-gray-700 text-sm">
@@ -403,6 +405,7 @@
                                             <th class="p-3">Azione</th>
                                             <th class="p-3">Oggetto (Qta)</th>
                                             <th class="p-3">Motivo</th>
+                                            <th class="p-3 text-right">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="inventory-yj-logs-table" class="divide-y divide-gray-700 bg-gray-850">
@@ -482,6 +485,7 @@
                                             <th class="p-3">Azione</th>
                                             <th class="p-3">Oggetto (Qta)</th>
                                             <th class="p-3">Motivo</th>
+                                            <th class="p-3 text-right">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="inventory-fen-logs-table" class="divide-y divide-gray-700 bg-gray-850">
@@ -498,12 +502,12 @@
 
                 <!-- Libreria Immagini PNG -->
                 <div class="bg-gray-800/95 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
-                    <h3 class="text-lg font-bold text-amber-400 mb-2"><i class="fa-solid fa-images mr-2"></i> Libreria Immagini Item (PNG)</h3>
-                    <p class="text-gray-400 text-xs mb-4">Seleziona <strong class="text-amber-400">una o più PNG</strong> (max ~400 KB ciascuna). In Inventario le scegli per <strong class="text-amber-400">nome file</strong>.</p>
+                    <h3 class="text-lg font-bold text-amber-400 mb-2"><i class="fa-solid fa-images mr-2"></i> Libreria Immagini Item</h3>
+                    <p class="text-gray-400 text-xs mb-4">Seleziona <strong class="text-amber-400">una o più immagini</strong> (PNG/JPG/WebP). Vengono <strong class="text-amber-400">compresse automaticamente</strong> (~160px) per non rallentare il sito. In Inventario le scegli per <strong class="text-amber-400">nome file</strong>.</p>
                     <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end mb-4">
                         <div class="flex-1">
-                            <label class="block text-xs font-medium text-gray-400 mb-1">File PNG (selezione multipla)</label>
-                            <input type="file" id="item-image-file" accept="image/png,.png" multiple class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500 file:text-gray-900 file:font-bold file:text-xs">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">File immagine (selezione multipla)</label>
+                            <input type="file" id="item-image-file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-sm text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500 file:text-gray-900 file:font-bold file:text-xs">
                         </div>
                         <button type="button" id="item-image-upload-btn" onclick="window.uploadItemImagesFromInput()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg whitespace-nowrap">
                             <i class="fa-solid fa-upload mr-1"></i> Carica PNG

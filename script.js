@@ -665,20 +665,33 @@ function isSectionVisible(section) {
 function isAdminOpen() {
     return currentSectionId === 'admin' && userRole === 'gestore';
 }
-function scheduleUI(fn, delay) {
-    const run = function () {
-        try { fn(); } catch (e) { console.error(e); }
-    };
-    if (delay && delay > 0) {
-        setTimeout(function () {
-            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 600 });
-            else run();
-        }, delay);
-    } else if (typeof requestIdleCallback === 'function') {
-        requestIdleCallback(run, { timeout: 400 });
-    } else {
-        setTimeout(run, 0);
+/** Coalesce + debounce UI updates per chiave (evita freeze con tanti onSnapshot). */
+const _uiTimers = {};
+function scheduleUI(fn, delay, key) {
+    const k = key || 'default';
+    const wait = (typeof delay === 'number') ? delay : 80;
+    if (_uiTimers[k]) clearTimeout(_uiTimers[k]);
+    _uiTimers[k] = setTimeout(function () {
+        delete _uiTimers[k];
+        const run = function () {
+            try { fn(); } catch (e) { console.error(e); }
+        };
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(run, { timeout: 900 });
+        } else {
+            run();
+        }
+    }, wait);
+}
+
+/** URL immagine item: preferisce libreria (imageId), fallback su dataUrl salvato. */
+function resolveItemImageUrl(item) {
+    if (!item) return 'https://via.placeholder.com/150?text=No+Immagine';
+    if (item.imageId && localItemImages[item.imageId] && localItemImages[item.imageId].dataUrl) {
+        return localItemImages[item.imageId].dataUrl;
     }
+    if (item.imageUrl) return item.imageUrl;
+    return 'https://via.placeholder.com/150?text=No+Immagine';
 }
 
 function refreshActiveSectionUI() {
@@ -1036,7 +1049,60 @@ if (stashForm) {
 }
 
 // --- LIBRERIA IMMAGINI ITEM (onclick sul bottone, niente form) ---
-const MAX_ITEM_IMAGE_BYTES = 400 * 1024;
+/** Limite file sorgente (prima della compressione). */
+const MAX_ITEM_IMAGE_SOURCE_BYTES = 2.5 * 1024 * 1024;
+/** Dopo compressione: target massimo salvato in Firestore. */
+const MAX_ITEM_IMAGE_BYTES = 120 * 1024;
+/** Lato massimo thumbnail (icone inventario). */
+const ITEM_IMAGE_MAX_PX = 160;
+
+/**
+ * Ridimensiona e comprime un'immagine (mantiene trasparenza PNG se presente).
+ * Riduce drasticamente memoria Firestore e lag del browser.
+ */
+function compressImageToDataUrl(file, maxPx, maxBytes) {
+    maxPx = maxPx || ITEM_IMAGE_MAX_PX;
+    maxBytes = maxBytes || MAX_ITEM_IMAGE_BYTES;
+    return new Promise(function (resolve, reject) {
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var w = img.naturalWidth || img.width;
+                var h = img.naturalHeight || img.height;
+                var scale = Math.min(1, maxPx / Math.max(w, h));
+                var tw = Math.max(1, Math.round(w * scale));
+                var th = Math.max(1, Math.round(h * scale));
+                var canvas = document.createElement('canvas');
+                canvas.width = tw;
+                canvas.height = th;
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, tw, th);
+                ctx.drawImage(img, 0, 0, tw, th);
+                URL.revokeObjectURL(url);
+
+                var dataUrl = canvas.toDataURL('image/png');
+                if (dataUrl.length > maxBytes * 1.37) {
+                    var jpeg = canvas.toDataURL('image/jpeg', 0.82);
+                    if (jpeg.length < dataUrl.length) dataUrl = jpeg;
+                }
+                if (dataUrl.length > maxBytes * 1.37 && maxPx > 96) {
+                    compressImageToDataUrl(file, Math.floor(maxPx * 0.75), maxBytes).then(resolve).catch(reject);
+                    return;
+                }
+                resolve(dataUrl);
+            } catch (err) {
+                URL.revokeObjectURL(url);
+                reject(err);
+            }
+        };
+        img.onerror = function () {
+            URL.revokeObjectURL(url);
+            reject(new Error('Impossibile leggere l\'immagine'));
+        };
+        img.src = url;
+    });
+}
 
 function renderItemImageSelects() {
     const opts = ['<option value="">— Nessuna / placeholder —</option>'];
@@ -1072,9 +1138,11 @@ function renderItemImagesLibrary() {
         card.className = 'relative bg-gray-900 border border-gray-700 rounded-xl overflow-hidden group';
         card.innerHTML =
             '<div class="h-20 flex items-center justify-center bg-gray-950 p-2">' +
-            '<img src="' + (img.dataUrl || '') + '" alt="" class="max-h-full max-w-full object-contain">' +
+            '<img src="' + (img.dataUrl || '') + '" alt="" loading="lazy" decoding="async" class="max-h-full max-w-full object-contain">' +
             '</div><div class="p-2 border-t border-gray-800">' +
-            '<p class="text-[11px] text-amber-400 font-mono truncate">' + name + '</p></div>' +
+            '<p class="text-[11px] text-amber-400 font-mono truncate">' + name + '</p>' +
+            (img.size ? '<p class="text-[9px] text-gray-500">' + Math.round((img.size || 0) / 1024) + ' KB</p>' : '') +
+            '</div>' +
             '<button type="button" class="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-[10px] opacity-0 group-hover:opacity-100 transition" title="Elimina"><i class="fa-solid fa-trash"></i></button>';
         card.querySelector('button').addEventListener('click', function () {
             showConfirmModal('Elimina immagine', 'Rimuovere "' + name + '" dalla libreria?', function () {
@@ -1132,10 +1200,10 @@ window.uploadItemImagesFromInput = async function uploadItemImagesFromInput() {
             if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> ' + (i + 1) + '/' + files.length;
             if (statusEl) statusEl.textContent = 'Carico ' + (i + 1) + ' di ' + files.length + ': ' + file.name;
 
-            var isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
-            if (!isPng) { skip++; continue; }
-            if (file.size > MAX_ITEM_IMAGE_BYTES) {
-                showToast('"' + file.name + '" troppo grande (' + Math.round(file.size / 1024) + ' KB). Max 400 KB.', 'warning');
+            var isImg = /image\/(png|jpeg|jpg|webp)/i.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name);
+            if (!isImg) { skip++; continue; }
+            if (file.size > MAX_ITEM_IMAGE_SOURCE_BYTES) {
+                showToast('"' + file.name + '" troppo grande (' + Math.round(file.size / 1024) + ' KB). Max sorgente ~2,5 MB (verrà compressa).', 'warning');
                 skip++;
                 continue;
             }
@@ -1146,11 +1214,13 @@ window.uploadItemImagesFromInput = async function uploadItemImagesFromInput() {
                 continue;
             }
             try {
-                var dataUrl = await readFileAsDataURL(file);
+                var dataUrl = await compressImageToDataUrl(file, ITEM_IMAGE_MAX_PX, MAX_ITEM_IMAGE_BYTES);
+                var approxBytes = Math.round((dataUrl.length * 3) / 4);
                 await db.collection('item_images').add({
                     fileName: baseName,
                     dataUrl: dataUrl,
-                    size: file.size,
+                    size: approxBytes,
+                    width: ITEM_IMAGE_MAX_PX,
                     createdAt: Date.now()
                 });
                 existingNames.add(baseName.toLowerCase());
@@ -1425,6 +1495,7 @@ function renderSalesTableGeneric(tbodyId, salesObj, filterId, isYJ) {
         return;
     }
 
+    const canDelete = userRole === 'gestore';
     salesArray.forEach(sale => {
         const isFree = sale.isFreeSale || (sale.serviceName && String(sale.serviceName).startsWith('[LIBERO]'));
         let totaleCell, yellowCell, spettCell;
@@ -1437,6 +1508,11 @@ function renderSalesTableGeneric(tbodyId, salesObj, filterId, isYJ) {
             yellowCell = formatValuta(sale.yellowGain);
             spettCell = `${formatValuta(sale.employeeGain)} <span class="text-[10px] text-gray-500">(${sale.appliedPercentage}%)</span>`;
         }
+        const deleteBtn = canDelete
+            ? `<button onclick="window.deleteSaleItem('${sale.key}', ${isYJ})" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition" title="Elimina vendita (solo gestore)">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+               </button>`
+            : '';
         tbody.innerHTML += `
             <tr class="hover:bg-gray-750/50 transition border-b border-gray-800">
                 <td class="py-3 text-xs text-gray-400">${sale.dateString.split(',')[0]}</td>
@@ -1445,11 +1521,7 @@ function renderSalesTableGeneric(tbodyId, salesObj, filterId, isYJ) {
                 <td class="py-3">${totaleCell}</td>
                 <td class="py-3">${yellowCell}</td>
                 <td class="py-3 text-indigo-400 font-semibold">${spettCell}</td>
-                <td class="py-3 text-right">
-                    <button onclick="window.deleteSaleItem('${sale.key}', ${isYJ})" class="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600 hover:text-white transition" title="Elimina">
-                        <i class="fa-solid fa-trash text-[10px]"></i>
-                    </button>
-                </td>
+                <td class="py-3 text-right">${deleteBtn}</td>
             </tr>
         `;
     });
@@ -1463,11 +1535,15 @@ function renderSalesFenTable() {
 }
 
 window.deleteSaleItem = function(key, isYJ) {
+    if (userRole !== 'gestore') {
+        showToast("Solo il gestore può eliminare le vendite.", "error");
+        return;
+    }
     const sales = isYJ ? localSalesYJ : localSalesFen;
     const collection = isYJ ? 'current_sales' : 'current_sales_fen';
     const sale = sales[key];
     if (!sale) return;
-    showConfirmModal("Elimina Vendita", `Eliminare la vendita di "${sale.serviceName}" di ${sale.employeeName}?`, () => {
+    showConfirmModal("Elimina Vendita", `Eliminare la vendita di "${sale.serviceName}" di ${sale.employeeName}? L'operazione non è reversibile.`, () => {
         db.collection(collection).doc(key).delete()
             .then(() => showToast("Vendita rimossa.", "info"))
             .catch(err => showToast(err.message, "error"));
@@ -1684,14 +1760,20 @@ function renderInventoryYjGrid() {
         grid.innerHTML = `<div class="col-span-full text-center py-6 text-gray-500 text-sm">Nessun oggetto in inventario YJ.</div>`;
         return;
     }
+    const canDelete = userRole === 'gestore';
     items.forEach(item => {
-        grid.innerHTML += `
-            <div onclick="openSmartModal('inv_yj', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 transition-all">
-                <button onclick="event.stopPropagation(); window.deleteInventoryItem('${item.id}', '${item.name.replace(/'/g, "\\'")}', true)" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs z-20" title="Rimuovi">
+        const safeName = String(item.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const deleteBtn = canDelete
+            ? `<button onclick="event.stopPropagation(); window.deleteInventoryItem('${item.id}', '${safeName}', true)" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs z-20" title="Rimuovi oggetto (solo gestore)">
                     <i class="fa-solid fa-trash"></i>
-                </button>
+               </button>`
+            : '';
+        const imgSrc = resolveItemImageUrl(item);
+        grid.innerHTML += `
+            <div onclick="openSmartModal('inv_yj', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 transition-all inv-item-card">
+                ${deleteBtn}
                 <div class="h-28 w-full bg-gray-900 flex items-center justify-center p-2">
-                    <img src="${item.imageUrl}" alt="${item.name}" class="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-110 transition" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
+                    <img src="${imgSrc}" alt="${item.name}" loading="lazy" decoding="async" width="112" height="112" class="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-110 transition" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
                 </div>
                 <div class="p-3 flex-1 flex flex-col justify-between">
                     <h4 class="font-bold text-amber-400 text-sm truncate">${item.name}</h4>
@@ -1710,14 +1792,20 @@ function renderInventoryYjLogs() {
     if (!tbody) return;
     tbody.innerHTML = '';
     if (localInventoryYJLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
         return;
     }
+    const canDelete = userRole === 'gestore';
     localInventoryYJLogs.forEach(log => {
         const isDeposit = log.action === 'deposita';
         const badge = isDeposit
             ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>`
             : `<span class="text-amber-500 bg-amber-500/10 px-2 py-1 rounded text-xs font-bold">📤 Preleva</span>`;
+        const deleteBtn = canDelete
+            ? `<button onclick="window.deleteInventoryLog('${log.id}', true)" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition" title="Elimina movimento (ripristina quantità)">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+               </button>`
+            : '';
         tbody.innerHTML += `
             <tr class="hover:bg-gray-750/50 border-b border-gray-700">
                 <td class="p-3 text-xs text-gray-400">${log.dateString}</td>
@@ -1725,6 +1813,7 @@ function renderInventoryYjLogs() {
                 <td class="p-3">${badge}</td>
                 <td class="p-3 text-gray-300 text-xs"><b>${log.itemName}</b> (x${log.quantity})</td>
                 <td class="p-3 text-gray-400 text-xs italic truncate max-w-[150px]">${log.reason || '-'}</td>
+                <td class="p-3 text-right">${deleteBtn}</td>
             </tr>
         `;
     });
@@ -1740,22 +1829,78 @@ document.getElementById('inventory-yj-admin-form')?.addEventListener('submit', (
     if (!stash) { showToast("Seleziona un deposito YJ.", "warning"); return; }
     let imageUrl = 'https://via.placeholder.com/150?text=No+Immagine';
     let imageFileName = '';
+    let imageId = '';
     if (imgId && localItemImages[imgId]) {
-        imageUrl = localItemImages[imgId].dataUrl || imageUrl;
+        imageId = imgId;
         imageFileName = localItemImages[imgId].fileName || '';
+        imageUrl = localItemImages[imgId].dataUrl || imageUrl;
     }
-    db.collection('inventory_items').add({ name, imageUrl, imageFileName, quantity, stash, createdAt: Date.now() })
+    const payloadYj = { name, imageFileName, quantity, stash, createdAt: Date.now() };
+    if (imageId) {
+        payloadYj.imageId = imageId;
+        if (imageUrl && imageUrl.length < 55000) payloadYj.imageUrl = imageUrl;
+    } else {
+        payloadYj.imageUrl = imageUrl;
+    }
+    db.collection('inventory_items').add(payloadYj)
         .then(() => { e.target.reset(); document.getElementById('inv-yj-admin-qty').value = 0; showToast("Oggetto creato solo in inventario YJ!", "success"); })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 
 window.deleteInventoryItem = function(id, name, isYJ) {
+    if (userRole !== 'gestore') {
+        showToast("Solo il gestore può eliminare oggetti dall'inventario.", "error");
+        return;
+    }
     const collection = isYJ ? 'inventory_items' : 'fenici_items';
-    showConfirmModal("Elimina Oggetto", `Rimuovere "${name}"?`, () => {
+    showConfirmModal("Elimina Oggetto", `Rimuovere definitivamente "${name}" dall'inventario?`, () => {
         db.collection(collection).doc(id).delete()
-            .then(() => showToast("Rimosso.", "info"))
+            .then(() => showToast("Oggetto rimosso dall'inventario.", "info"))
             .catch(err => showToast(err.message, "error"));
     }, true);
+};
+
+/** Elimina un movimento inventario e ripristina la quantità sull'oggetto (solo gestore). */
+window.deleteInventoryLog = function(logId, isYJ) {
+    if (userRole !== 'gestore') {
+        showToast("Solo il gestore può eliminare i movimenti.", "error");
+        return;
+    }
+    const logs = isYJ ? localInventoryYJLogs : localInventoryFenLogs;
+    const log = logs.find(l => l.id === logId);
+    if (!log) {
+        showToast("Movimento non trovato.", "error");
+        return;
+    }
+    const collectionLogs = isYJ ? 'inventory_logs' : 'fenici_logs';
+    const collectionItems = isYJ ? 'inventory_items' : 'fenici_items';
+    const itemsMap = isYJ ? localInventoryYJ : localInventoryFen;
+    const item = log.itemId ? itemsMap[log.itemId] : null;
+    const qty = parseInt(log.quantity, 10) || 0;
+    const actionLabel = log.action === 'deposita' ? 'deposito' : 'prelievo';
+
+    showConfirmModal(
+        "Elimina Movimento",
+        `Eliminare il ${actionLabel} di "${log.itemName}" (x${qty}) di ${log.employeeName}? La quantità sull'oggetto verrà ripristinata.`,
+        () => {
+            const batch = db.batch();
+            batch.delete(db.collection(collectionLogs).doc(logId));
+            if (item && log.itemId && qty > 0) {
+                let newQty = item.quantity || 0;
+                // Inverti il movimento: se era prelievo → riaggiungi; se era deposito → togli
+                if (log.action === 'preleva') {
+                    newQty += qty;
+                } else if (log.action === 'deposita') {
+                    newQty = Math.max(0, newQty - qty);
+                }
+                batch.update(db.collection(collectionItems).doc(log.itemId), { quantity: newQty });
+            }
+            batch.commit()
+                .then(() => showToast("Movimento eliminato e quantità aggiornata.", "info"))
+                .catch(err => showToast(err.message, "error"));
+        },
+        true
+    );
 };
 
 document.getElementById('inventory-yj-transaction-form')?.addEventListener('submit', (e) => {
@@ -1815,14 +1960,20 @@ function renderInventoryFenGrid() {
         grid.innerHTML = `<div class="col-span-full text-center py-6 text-gray-500 text-sm">Nessun oggetto in inventario Fenici.</div>`;
         return;
     }
+    const canDelete = userRole === 'gestore';
     items.forEach(item => {
-        grid.innerHTML += `
-            <div onclick="openSmartModal('inv_fen', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 transition-all">
-                <button onclick="event.stopPropagation(); window.deleteInventoryItem('${item.id}', '${item.name.replace(/'/g, "\\'")}', false)" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs z-20" title="Rimuovi">
+        const safeName = String(item.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const deleteBtn = canDelete
+            ? `<button onclick="event.stopPropagation(); window.deleteInventoryItem('${item.id}', '${safeName}', false)" class="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg text-xs z-20" title="Rimuovi oggetto (solo gestore)">
                     <i class="fa-solid fa-trash"></i>
-                </button>
+               </button>`
+            : '';
+        const imgSrc = resolveItemImageUrl(item);
+        grid.innerHTML += `
+            <div onclick="openSmartModal('inv_fen', '${item.id}')" class="relative bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-lg flex flex-col group cursor-pointer hover:border-amber-500 transition-all inv-item-card">
+                ${deleteBtn}
                 <div class="h-28 w-full bg-gray-900 flex items-center justify-center p-2">
-                    <img src="${item.imageUrl}" alt="${item.name}" class="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-110 transition" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
+                    <img src="${imgSrc}" alt="${item.name}" loading="lazy" decoding="async" width="112" height="112" class="max-h-full max-w-full object-contain drop-shadow-md group-hover:scale-110 transition" onerror="this.src='https://via.placeholder.com/150?text=No+Immagine';">
                 </div>
                 <div class="p-3 flex-1 flex flex-col justify-between">
                     <h4 class="font-bold text-amber-400 text-sm truncate">${item.name}</h4>
@@ -1841,14 +1992,20 @@ function renderInventoryFenLogs() {
     if (!tbody) return;
     tbody.innerHTML = '';
     if (localInventoryFenLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
         return;
     }
+    const canDelete = userRole === 'gestore';
     localInventoryFenLogs.forEach(log => {
         const isDeposit = log.action === 'deposita';
         const badge = isDeposit
             ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>`
             : `<span class="text-amber-500 bg-amber-500/10 px-2 py-1 rounded text-xs font-bold">📤 Preleva</span>`;
+        const deleteBtn = canDelete
+            ? `<button onclick="window.deleteInventoryLog('${log.id}', false)" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition" title="Elimina movimento (ripristina quantità)">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+               </button>`
+            : '';
         tbody.innerHTML += `
             <tr class="hover:bg-gray-750/50 border-b border-gray-700">
                 <td class="p-3 text-xs text-gray-400">${log.dateString}</td>
@@ -1856,6 +2013,7 @@ function renderInventoryFenLogs() {
                 <td class="p-3">${badge}</td>
                 <td class="p-3 text-gray-300 text-xs"><b>${log.itemName}</b> (x${log.quantity})</td>
                 <td class="p-3 text-gray-400 text-xs italic truncate max-w-[150px]">${log.reason || '-'}</td>
+                <td class="p-3 text-right">${deleteBtn}</td>
             </tr>
         `;
     });
@@ -1871,11 +2029,20 @@ document.getElementById('inventory-fen-admin-form')?.addEventListener('submit', 
     if (!stash) { showToast("Seleziona un deposito Fenici.", "warning"); return; }
     let imageUrl = 'https://via.placeholder.com/150?text=No+Immagine';
     let imageFileName = '';
+    let imageId = '';
     if (imgId && localItemImages[imgId]) {
-        imageUrl = localItemImages[imgId].dataUrl || imageUrl;
+        imageId = imgId;
         imageFileName = localItemImages[imgId].fileName || '';
+        imageUrl = localItemImages[imgId].dataUrl || imageUrl;
     }
-    db.collection('fenici_items').add({ name, imageUrl, imageFileName, quantity, stash, createdAt: Date.now() })
+    const payloadFen = { name, imageFileName, quantity, stash, createdAt: Date.now() };
+    if (imageId) {
+        payloadFen.imageId = imageId;
+        if (imageUrl && imageUrl.length < 55000) payloadFen.imageUrl = imageUrl;
+    } else {
+        payloadFen.imageUrl = imageUrl;
+    }
+    db.collection('fenici_items').add(payloadFen)
         .then(() => { e.target.reset(); document.getElementById('inv-fen-admin-qty').value = 0; showToast("Oggetto creato solo in inventario Fenici!", "success"); })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });

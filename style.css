@@ -446,6 +446,8 @@ h1, h2, h3 {
 .inv-giacenza-scroll {
     max-height: min(65vh, 640px) !important;
     min-height: 320px !important;
+    content-visibility: auto;
+    contain: layout style paint;
 }
 .inv-logs-scroll {
     max-height: min(40vh, 380px) !important;
@@ -454,4 +456,15 @@ h1, h2, h3 {
 #inventory-yj-section.staff-centered .inv-content-col,
 #inventory-fen-section.staff-centered .inv-content-col {
     max-width: 1100px !important;
+}
+
+/* Performance: card inventario e immagini */
+.inv-item-card {
+    content-visibility: auto;
+    contain: layout style paint;
+}
+#inventory-yj-grid img,
+#inventory-fen-grid img,
+#item-images-grid img {
+    content-visibility: auto;
 }
