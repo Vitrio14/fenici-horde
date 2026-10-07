@@ -330,6 +330,29 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
             reason: reason
         });
         batch.commit().then(() => {
+            // Aggiornamento ottimistico locale → UI immediata (il listener sincronizzerà dopo)
+            if (localData[itemId]) localData[itemId].quantity = newQty;
+            const logEntry = {
+                id: 'local_' + Date.now(),
+                timestamp: Date.now(),
+                dateString: new Date().toLocaleString('it-IT'),
+                employeeId: empId,
+                employeeName: empName,
+                itemId: itemId,
+                itemName: item.name,
+                action: action,
+                quantity: qty,
+                reason: reason
+            };
+            if (type === 'inv_yj') {
+                localInventoryYJLogs.unshift(logEntry);
+                if (localInventoryYJLogs.length > 50) localInventoryYJLogs.pop();
+                forceRefreshAfterWrite('inv_yj');
+            } else {
+                localInventoryFenLogs.unshift(logEntry);
+                if (localInventoryFenLogs.length > 50) localInventoryFenLogs.pop();
+                forceRefreshAfterWrite('inv_fen');
+            }
             closeSmartModal();
             showToast(`Movimento completato!`, "success");
         }).catch(err => showToast("Errore: " + err.message, "error"));
@@ -392,7 +415,17 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
         }
 
         db.collection(salesCollection).add(saleData)
-            .then(() => {
+            .then((docRef) => {
+                // Ottimistico: inserisci in locale e ridisegna subito
+                const localKey = docRef && docRef.id ? docRef.id : ('local_' + Date.now());
+                if (isYJ) {
+                    localSalesYJ[localKey] = saleData;
+                    forceRefreshAfterWrite('sale_yj');
+                } else {
+                    localSalesFen[localKey] = saleData;
+                    forceRefreshAfterWrite('sale_fen');
+                }
+                if (userRole === 'gestore') forceRefreshAfterWrite('admin');
                 closeSmartModal();
                 showToast("Vendita registrata!", "success");
             })
@@ -665,23 +698,52 @@ function isSectionVisible(section) {
 function isAdminOpen() {
     return currentSectionId === 'admin' && userRole === 'gestore';
 }
-/** Coalesce + debounce UI updates per chiave (evita freeze con tanti onSnapshot). */
+/** Debounce UI updates PER CHIAVE distinta (non cancellare update di sezioni diverse).
+ *  delay basso e senza requestIdleCallback per aggiornamenti quasi in tempo reale. */
 const _uiTimers = {};
 function scheduleUI(fn, delay, key) {
     const k = key || 'default';
-    const wait = (typeof delay === 'number') ? delay : 80;
+    // Se delay è false/0 → esegui subito (dopo microtask) senza debounce
+    if (delay === 0 || delay === false) {
+        if (_uiTimers[k]) { clearTimeout(_uiTimers[k]); delete _uiTimers[k]; }
+        Promise.resolve().then(function () {
+            try { fn(); } catch (e) { console.error(e); }
+        });
+        return;
+    }
+    const wait = (typeof delay === 'number') ? delay : 30;
     if (_uiTimers[k]) clearTimeout(_uiTimers[k]);
     _uiTimers[k] = setTimeout(function () {
         delete _uiTimers[k];
-        const run = function () {
-            try { fn(); } catch (e) { console.error(e); }
-        };
-        if (typeof requestIdleCallback === 'function') {
-            requestIdleCallback(run, { timeout: 900 });
-        } else {
-            run();
-        }
+        try { fn(); } catch (e) { console.error(e); }
     }, wait);
+}
+
+/** Forza refresh immediato della sezione inventario / vendite dopo una scrittura locale. */
+function forceRefreshAfterWrite(kind) {
+    try {
+        if (kind === 'inv_yj' || kind === 'all') {
+            if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+            if (typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
+            if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
+        }
+        if (kind === 'inv_fen' || kind === 'all') {
+            if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+            if (typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
+            if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
+        }
+        if (kind === 'sale_yj' || kind === 'all') {
+            if (typeof renderSalesYjTable === 'function') renderSalesYjTable();
+            if (typeof renderQuickSalesYjGrid === 'function') renderQuickSalesYjGrid();
+        }
+        if (kind === 'sale_fen' || kind === 'all') {
+            if (typeof renderSalesFenTable === 'function') renderSalesFenTable();
+            if (typeof renderQuickSalesFenGrid === 'function') renderQuickSalesFenGrid();
+        }
+        if (kind === 'admin' || kind === 'all') {
+            if (userRole === 'gestore' && typeof calculateManagementData === 'function') calculateManagementData();
+        }
+    } catch (e) { console.error('forceRefreshAfterWrite', e); }
 }
 
 /** URL immagine item: preferisce libreria (imageId), fallback su dataUrl salvato. */
@@ -784,7 +846,7 @@ function initDatabaseListeners() {
             if (typeof renderAllEmployeeDropdowns === 'function') renderAllEmployeeDropdowns();
             if (typeof renderAdminFilterDropdown === 'function') renderAdminFilterDropdown();
             if (isAdminOpen() && typeof renderEmployees === 'function') renderEmployees();
-        });
+        }, 30, 'employees');
     });
 
     db.collection('catalog').onSnapshot(snapshot => {
@@ -796,7 +858,7 @@ function initDatabaseListeners() {
                 if (typeof renderQuickSalesYjGrid === 'function') renderQuickSalesYjGrid();
             }
             if (isAdminOpen() && typeof renderCatalogYJ === 'function') renderCatalogYJ();
-        });
+        }, 30, 'catalog_yj');
     });
 
     db.collection('catalog_fen').onSnapshot(snapshot => {
@@ -808,7 +870,7 @@ function initDatabaseListeners() {
                 if (typeof renderQuickSalesFenGrid === 'function') renderQuickSalesFenGrid();
             }
             if (isAdminOpen() && typeof renderCatalogFen === 'function') renderCatalogFen();
-        });
+        }, 30, 'catalog_fen');
     });
 
     // FASE 2: vendite / depositi
@@ -821,7 +883,7 @@ function initDatabaseListeners() {
                 if (isAdminOpen() && typeof renderCustomStashesList === 'function') renderCustomStashesList();
                 if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
                 if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
-            });
+            }, 30, 'stashes');
         });
 
         db.collection('current_sales').onSnapshot(snapshot => {
@@ -830,7 +892,7 @@ function initDatabaseListeners() {
             scheduleUI(function () {
                 if (isSectionVisible('sales-yj') && typeof renderSalesYjTable === 'function') renderSalesYjTable();
                 if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            });
+            }, 30, 'sales_yj');
         });
 
         db.collection('current_sales_fen').onSnapshot(snapshot => {
@@ -839,7 +901,7 @@ function initDatabaseListeners() {
             scheduleUI(function () {
                 if (isSectionVisible('sales-fen') && typeof renderSalesFenTable === 'function') renderSalesFenTable();
                 if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            });
+            }, 30, 'sales_fen');
         });
 
         db.collection('current_salaries_status').onSnapshot(snapshot => {
@@ -847,7 +909,7 @@ function initDatabaseListeners() {
             snapshot.forEach(doc => { localSalariesStatus[doc.id] = doc.data().status || 'non_pagato'; });
             scheduleUI(function () {
                 if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            });
+            }, 30, 'salaries');
         });
     }, 80);
 
@@ -861,7 +923,7 @@ function initDatabaseListeners() {
                     if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
                     if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
                 }
-            });
+            }, 20, 'inv_yj_items');
         });
 
         db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
@@ -869,7 +931,7 @@ function initDatabaseListeners() {
             snapshot.forEach(doc => { localInventoryYJLogs.push({ id: doc.id, ...doc.data() }); });
             scheduleUI(function () {
                 if (isSectionVisible('inventory-yj') && typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
-            });
+            }, 20, 'inv_yj_logs');
         });
 
         db.collection('fenici_items').onSnapshot(snapshot => {
@@ -880,7 +942,7 @@ function initDatabaseListeners() {
                     if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
                     if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
                 }
-            });
+            }, 20, 'inv_fen_items');
         });
 
         db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
@@ -888,7 +950,7 @@ function initDatabaseListeners() {
             snapshot.forEach(doc => { localInventoryFenLogs.push({ id: doc.id, ...doc.data() }); });
             scheduleUI(function () {
                 if (isSectionVisible('inventory-fen') && typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
-            });
+            }, 20, 'inv_fen_logs');
         });
     }, 200);
 
@@ -901,7 +963,7 @@ function initDatabaseListeners() {
                 if (isSectionVisible('sales-yj') && typeof renderSalesArchiveWindowYJ === 'function') renderSalesArchiveWindowYJ(localArchive);
                 if (isSectionVisible('sales-fen') && typeof renderSalesArchiveWindowFen === 'function') renderSalesArchiveWindowFen(localArchive);
                 if (isAdminOpen() && typeof renderArchive === 'function') renderArchive(localArchive);
-            });
+            }, 40, 'archive');
         });
 
         db.collection('item_images').onSnapshot(snapshot => {
@@ -910,10 +972,9 @@ function initDatabaseListeners() {
             scheduleUI(function () {
                 if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
                 if (isAdminOpen() && typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
-                // se sei in inventario, rinfresca griglia (icone)
                 if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
                 if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
-            }, 40);
+            }, 40, 'item_images');
         });
     }, 350);
 }
@@ -2062,7 +2123,13 @@ document.getElementById('inventory-yj-admin-form')?.addEventListener('submit', (
         payloadYj.imageUrl = imageUrl;
     }
     db.collection('inventory_items').add(payloadYj)
-        .then(() => { e.target.reset(); document.getElementById('inv-yj-admin-qty').value = 0; showToast("Oggetto creato solo in inventario YJ!", "success"); })
+        .then((docRef) => {
+            if (docRef && docRef.id) localInventoryYJ[docRef.id] = payloadYj;
+            forceRefreshAfterWrite('inv_yj');
+            e.target.reset();
+            document.getElementById('inv-yj-admin-qty').value = 0;
+            showToast("Oggetto creato solo in inventario YJ!", "success");
+        })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 
@@ -2115,7 +2182,29 @@ window.deleteInventoryLog = function(logId, isYJ) {
                 batch.update(db.collection(collectionItems).doc(log.itemId), { quantity: newQty });
             }
             batch.commit()
-                .then(() => showToast("Movimento eliminato e quantità aggiornata.", "info"))
+                .then(() => {
+                    // rimuovi log locale e aggiorna qty
+                    if (isYJ) {
+                        localInventoryYJLogs = localInventoryYJLogs.filter(l => l.id !== logId);
+                        if (item && log.itemId) {
+                            let nq = item.quantity || 0;
+                            if (log.action === 'preleva') nq += qty;
+                            else if (log.action === 'deposita') nq = Math.max(0, nq - qty);
+                            localInventoryYJ[log.itemId].quantity = nq;
+                        }
+                        forceRefreshAfterWrite('inv_yj');
+                    } else {
+                        localInventoryFenLogs = localInventoryFenLogs.filter(l => l.id !== logId);
+                        if (item && log.itemId) {
+                            let nq = item.quantity || 0;
+                            if (log.action === 'preleva') nq += qty;
+                            else if (log.action === 'deposita') nq = Math.max(0, nq - qty);
+                            localInventoryFen[log.itemId].quantity = nq;
+                        }
+                        forceRefreshAfterWrite('inv_fen');
+                    }
+                    showToast("Movimento eliminato e quantità aggiornata.", "info");
+                })
                 .catch(err => showToast(err.message, "error"));
         },
         true
@@ -2146,6 +2235,15 @@ document.getElementById('inventory-yj-transaction-form')?.addEventListener('subm
         action, quantity: qty, reason
     });
     batch.commit().then(() => {
+        if (localInventoryYJ[itemId]) localInventoryYJ[itemId].quantity = newQty;
+        localInventoryYJLogs.unshift({
+            id: 'local_' + Date.now(), timestamp: Date.now(),
+            dateString: new Date().toLocaleString('it-IT'),
+            employeeId: empId, employeeName: empName, itemId, itemName: item.name,
+            action, quantity: qty, reason
+        });
+        if (localInventoryYJLogs.length > 50) localInventoryYJLogs.pop();
+        forceRefreshAfterWrite('inv_yj');
         e.target.reset();
         document.getElementById('inv-yj-qty').value = 1;
         showToast("Movimento YJ registrato!", "success");
@@ -2262,7 +2360,13 @@ document.getElementById('inventory-fen-admin-form')?.addEventListener('submit', 
         payloadFen.imageUrl = imageUrl;
     }
     db.collection('fenici_items').add(payloadFen)
-        .then(() => { e.target.reset(); document.getElementById('inv-fen-admin-qty').value = 0; showToast("Oggetto creato solo in inventario Fenici!", "success"); })
+        .then((docRef) => {
+            if (docRef && docRef.id) localInventoryFen[docRef.id] = payloadFen;
+            forceRefreshAfterWrite('inv_fen');
+            e.target.reset();
+            document.getElementById('inv-fen-admin-qty').value = 0;
+            showToast("Oggetto creato solo in inventario Fenici!", "success");
+        })
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 
@@ -2290,6 +2394,15 @@ document.getElementById('inventory-fen-transaction-form')?.addEventListener('sub
         action, quantity: qty, reason
     });
     batch.commit().then(() => {
+        if (localInventoryFen[itemId]) localInventoryFen[itemId].quantity = newQty;
+        localInventoryFenLogs.unshift({
+            id: 'local_' + Date.now(), timestamp: Date.now(),
+            dateString: new Date().toLocaleString('it-IT'),
+            employeeId: empId, employeeName: empName, itemId, itemName: item.name,
+            action, quantity: qty, reason
+        });
+        if (localInventoryFenLogs.length > 50) localInventoryFenLogs.pop();
+        forceRefreshAfterWrite('inv_fen');
         e.target.reset();
         document.getElementById('inv-fen-qty').value = 1;
         showToast("Movimento Fenici registrato!", "success");
