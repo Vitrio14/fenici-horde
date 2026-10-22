@@ -33,6 +33,7 @@ let localInventoryFenLogs = [];
 let localStashes = {};
 let localArchive = {};
 let localItemImages = {};
+let localSaldoMovimenti = []; // movimenti saldo YJ
 
 // DOM
 const loginPage = document.getElementById('login-page');
@@ -50,6 +51,8 @@ const salesFenSection = document.getElementById('sales-fen-section');
 const inventoryYjSection = document.getElementById('inventory-yj-section');
 const inventoryFenSection = document.getElementById('inventory-fen-section');
 const adminSection = document.getElementById('admin-section');
+const saldoSection = document.getElementById('saldo-section');
+const navSaldoBtn = document.getElementById('nav-saldo-btn');
 
 const logoutBtn = document.getElementById('logout-btn');
 const adminEmployeeFilter = document.getElementById('admin-employee-filter');
@@ -421,6 +424,10 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
                 if (isYJ) {
                     localSalesYJ[localKey] = saleData;
                     forceRefreshAfterWrite('sale_yj');
+                    // Registra automaticamente sul saldo Yellow
+                    if (typeof registerSaldoVendita === 'function') {
+                        registerSaldoVendita(localKey, saleData);
+                    }
                 } else {
                     localSalesFen[localKey] = saleData;
                     forceRefreshAfterWrite('sale_fen');
@@ -540,7 +547,7 @@ loginStaffForm?.addEventListener('submit', async (e) => {
             id: foundId,
             name: found.name,
             login: found.login || found.name,
-            roles: found.roles || { salesYJ: true, salesFen: false, invYJ: true, invFen: false },
+            roles: found.roles || { salesYJ: true, salesFen: false, invYJ: true, invFen: false, saldo: false },
             customPercentage: found.customPercentage || 40
         }, found);
 
@@ -655,7 +662,12 @@ function setupUIForRole() {
     show(navSalesFenBtn, isGestore || roles.salesFen);
     show(navInventoryYjBtn, isGestore || roles.invYJ);
     show(navInventoryFenBtn, isGestore || roles.invFen);
+    show(navSaldoBtn, isGestore || roles.saldo);
     show(navAdminBtn, isGestore);
+
+    // Controlli manuali saldo solo gestore
+    const saldoControls = document.getElementById('saldo-gestore-controls');
+    if (saldoControls) saldoControls.classList.toggle('hidden', !isGestore);
 
     // Controlli admin inventario
     const adminYj = document.getElementById('admin-inventory-yj-controls');
@@ -680,6 +692,7 @@ function setupUIForRole() {
     else if (roles.salesFen) showSection('sales-fen');
     else if (roles.invYJ) showSection('inventory-yj');
     else if (roles.invFen) showSection('inventory-fen');
+    else if (roles.saldo) showSection('saldo');
     else showSection('sales-yj');
 }
 
@@ -688,6 +701,7 @@ navSalesYjBtn.addEventListener('click', () => showSection('sales-yj'));
 navSalesFenBtn.addEventListener('click', () => showSection('sales-fen'));
 navInventoryYjBtn.addEventListener('click', () => showSection('inventory-yj'));
 navInventoryFenBtn.addEventListener('click', () => showSection('inventory-fen'));
+navSaldoBtn?.addEventListener('click', () => showSection('saldo'));
 navAdminBtn.addEventListener('click', () => showSection('admin'));
 
 let currentSectionId = 'sales-yj';
@@ -743,6 +757,9 @@ function forceRefreshAfterWrite(kind) {
         if (kind === 'admin' || kind === 'all') {
             if (userRole === 'gestore' && typeof calculateManagementData === 'function') calculateManagementData();
         }
+        if (kind === 'saldo' || kind === 'all') {
+            if (typeof renderSaldoSection === 'function') renderSaldoSection();
+        }
     } catch (e) { console.error('forceRefreshAfterWrite', e); }
 }
 
@@ -782,6 +799,9 @@ function refreshActiveSectionUI() {
             if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
             if (typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
             break;
+        case 'saldo':
+            if (typeof renderSaldoSection === 'function') renderSaldoSection();
+            break;
         case 'admin':
             if (typeof renderCatalogYJ === 'function') renderCatalogYJ();
             if (typeof renderCatalogFen === 'function') renderCatalogFen();
@@ -799,12 +819,12 @@ function refreshActiveSectionUI() {
 
 function showSection(section) {
     currentSectionId = section;
-    [salesYjSection, salesFenSection, inventoryYjSection, inventoryFenSection, adminSection].forEach(s => s && s.classList.add('hidden'));
+    [salesYjSection, salesFenSection, inventoryYjSection, inventoryFenSection, saldoSection, adminSection].forEach(s => s && s.classList.add('hidden'));
     
     const inactiveClass = "px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm";
     const activeClass = "px-3 py-2 rounded-xl nav-active font-medium transition text-sm";
     
-    [navSalesYjBtn, navSalesFenBtn, navInventoryYjBtn, navInventoryFenBtn, navAdminBtn].forEach(b => {
+    [navSalesYjBtn, navSalesFenBtn, navInventoryYjBtn, navInventoryFenBtn, navSaldoBtn, navAdminBtn].forEach(b => {
         if (!b) return;
         const wasHidden = b.classList.contains('hidden');
         b.className = inactiveClass + (wasHidden ? ' hidden' : '');
@@ -822,6 +842,9 @@ function showSection(section) {
     } else if (section === 'inventory-fen') {
         inventoryFenSection.classList.remove('hidden');
         navInventoryFenBtn.className = activeClass;
+    } else if (section === 'saldo') {
+        if (saldoSection) saldoSection.classList.remove('hidden');
+        if (navSaldoBtn) navSaldoBtn.className = activeClass;
     } else if (section === 'admin') {
         adminSection.classList.remove('hidden');
         navAdminBtn.className = activeClass;
@@ -976,6 +999,17 @@ function initDatabaseListeners() {
                 if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
             }, 40, 'item_images');
         });
+
+        // Saldo Yellow Jack – movimenti (vendite, storni, manuali)
+        db.collection('saldo_movimenti').orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
+            localSaldoMovimenti = [];
+            snapshot.forEach(doc => {
+                localSaldoMovimenti.push({ id: doc.id, ...doc.data() });
+            });
+            scheduleUI(function () {
+                if (isSectionVisible('saldo') && typeof renderSaldoSection === 'function') renderSaldoSection();
+            }, 30, 'saldo');
+        }, err => console.warn('saldo_movimenti listener:', err));
     }, 350);
 }
 
@@ -1747,7 +1781,17 @@ function handleSaleSubmit(e, isYJ) {
     }
 
     db.collection(collection).add(saleData)
-        .then(() => {
+        .then((docRef) => {
+            const localKey = docRef && docRef.id ? docRef.id : ('local_' + Date.now());
+            if (isYJ) {
+                localSalesYJ[localKey] = saleData;
+                forceRefreshAfterWrite('sale_yj');
+                if (typeof registerSaldoVendita === 'function') registerSaldoVendita(localKey, saleData);
+            } else {
+                localSalesFen[localKey] = saleData;
+                forceRefreshAfterWrite('sale_fen');
+            }
+            if (userRole === 'gestore') forceRefreshAfterWrite('admin');
             e.target.reset();
             qtyInput.value = "1";
             showToast("Vendita registrata!", "success");
@@ -1823,9 +1867,17 @@ window.deleteSaleItem = function(key, isYJ) {
     const collection = isYJ ? 'current_sales' : 'current_sales_fen';
     const sale = sales[key];
     if (!sale) return;
-    showConfirmModal("Elimina Vendita", `Eliminare la vendita di "${sale.serviceName}" di ${sale.employeeName}? L'operazione non è reversibile.`, () => {
+    const extraNote = isYJ
+        ? ' Sul saldo verrà registrato uno storno dell\'importo della vendita.'
+        : '';
+    showConfirmModal("Elimina Vendita", `Eliminare la vendita di "${sale.serviceName}" di ${sale.employeeName}? L'operazione non è reversibile.${extraNote}`, () => {
         db.collection(collection).doc(key).delete()
-            .then(() => showToast("Vendita rimossa.", "info"))
+            .then(() => {
+                if (isYJ && typeof registerSaldoStorno === 'function') {
+                    registerSaldoStorno(key, sale);
+                }
+                showToast(isYJ ? "Vendita rimossa e storno saldo registrato." : "Vendita rimossa.", "info");
+            })
             .catch(err => showToast(err.message, "error"));
     }, true);
 };
@@ -2423,6 +2475,7 @@ function resetEmployeeForm() {
     document.getElementById('role-sales-fen').checked = false;
     document.getElementById('role-inv-yj').checked = true;
     document.getElementById('role-inv-fen').checked = false;
+    if (document.getElementById('role-saldo')) document.getElementById('role-saldo').checked = false;
     if (empSubmitBtn) {
         empSubmitBtn.innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Registra Nuovo Dipendente';
         empSubmitBtn.className = 'flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition';
@@ -2446,7 +2499,8 @@ if (employeeForm) {
             salesYJ: document.getElementById('role-sales-yj').checked,
             salesFen: document.getElementById('role-sales-fen').checked,
             invYJ: document.getElementById('role-inv-yj').checked,
-            invFen: document.getElementById('role-inv-fen').checked
+            invFen: document.getElementById('role-inv-fen').checked,
+            saldo: document.getElementById('role-saldo') ? document.getElementById('role-saldo').checked : false
         };
 
         if (!name || !rank || !login || !password) {
@@ -2501,6 +2555,7 @@ window.editEmployee = function(key) {
     document.getElementById('role-sales-fen').checked = !!roles.salesFen;
     document.getElementById('role-inv-yj').checked = !!roles.invYJ;
     document.getElementById('role-inv-fen').checked = !!roles.invFen;
+    if (document.getElementById('role-saldo')) document.getElementById('role-saldo').checked = !!roles.saldo;
 
     if (empSubmitBtn) {
         empSubmitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Salva Modifiche';
@@ -2547,6 +2602,7 @@ function renderEmployees() {
         if (roles.salesFen) roleBadges.push('<span class="text-orange-400">Fen</span>');
         if (roles.invYJ) roleBadges.push('<span class="text-blue-400">InvYJ</span>');
         if (roles.invFen) roleBadges.push('<span class="text-purple-400">InvFen</span>');
+        if (roles.saldo) roleBadges.push('<span class="text-emerald-400">Saldo</span>');
         tbody.innerHTML += `
             <tr class="hover:bg-gray-700/60 border-b border-gray-700 text-xs">
                 <td class="p-2 font-bold text-amber-400">${emp.name || '-'}</td>
@@ -2826,3 +2882,183 @@ function renderArchive(archiveList) {
         `;
     });
 }
+
+// ===== SALDO YELLOW JACK =====
+/** Tipi movimento: vendita | storno | aggiunta | prelievo */
+function registerSaldoVendita(saleId, saleData) {
+    if (!saleData) return;
+    const amount = parseFloat(saleData.totalPrice) || 0;
+    if (amount <= 0) return;
+    const payload = {
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleString('it-IT'),
+        type: 'vendita',
+        amount: amount,
+        description: (saleData.serviceName || 'Vendita') + (saleData.quantity ? ' x' + saleData.quantity : ''),
+        employeeId: saleData.employeeKey || '',
+        employeeName: saleData.employeeName || '',
+        saleId: saleId || '',
+        createdBy: userRole === 'gestore' ? 'gestore' : (staffSession?.name || saleData.employeeName || 'staff')
+    };
+    db.collection('saldo_movimenti').add(payload)
+        .then((ref) => {
+            if (ref && ref.id) {
+                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
+                forceRefreshAfterWrite('saldo');
+            }
+        })
+        .catch(err => console.warn('Saldo vendita non registrata:', err.message));
+}
+
+function registerSaldoStorno(saleId, saleData) {
+    if (!saleData) return;
+    const amount = parseFloat(saleData.totalPrice) || 0;
+    if (amount <= 0) return;
+    const payload = {
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleString('it-IT'),
+        type: 'storno',
+        amount: -Math.abs(amount),
+        description: 'Storno: ' + (saleData.serviceName || 'Vendita') + (saleData.quantity ? ' x' + saleData.quantity : ''),
+        employeeId: saleData.employeeKey || '',
+        employeeName: saleData.employeeName || '',
+        saleId: saleId || '',
+        createdBy: 'gestore'
+    };
+    db.collection('saldo_movimenti').add(payload)
+        .then((ref) => {
+            if (ref && ref.id) {
+                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
+                forceRefreshAfterWrite('saldo');
+            }
+        })
+        .catch(err => console.warn('Saldo storno non registrato:', err.message));
+}
+
+function renderSaldoSection() {
+    const tbody = document.getElementById('saldo-movimenti-table');
+    const balEl = document.getElementById('saldo-balance');
+    const entEl = document.getElementById('saldo-entrate');
+    const uscEl = document.getElementById('saldo-uscite');
+    if (!tbody) return;
+
+    let balance = 0, entrate = 0, uscite = 0;
+    const rows = [...localSaldoMovimenti].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    rows.forEach(m => {
+        const amt = parseFloat(m.amount) || 0;
+        balance += amt;
+        if (amt >= 0) entrate += amt;
+        else uscite += Math.abs(amt);
+    });
+
+    if (balEl) {
+        balEl.textContent = formatValuta(balance);
+        balEl.className = 'text-3xl font-extrabold mt-2 ' + (balance >= 0 ? 'text-emerald-400' : 'text-red-400');
+    }
+    if (entEl) entEl.textContent = formatValuta(entrate);
+    if (uscEl) uscEl.textContent = formatValuta(uscite);
+
+    tbody.innerHTML = '';
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500 text-xs">Nessun movimento sul saldo.</td></tr>`;
+        return;
+    }
+
+    const canDelete = userRole === 'gestore';
+    const typeMeta = {
+        vendita: { label: 'Vendita', cls: 'text-emerald-400 bg-emerald-400/10', icon: 'fa-cash-register' },
+        storno: { label: 'Storno', cls: 'text-red-400 bg-red-400/10', icon: 'fa-rotate-left' },
+        aggiunta: { label: 'Aggiunta', cls: 'text-amber-400 bg-amber-400/10', icon: 'fa-plus' },
+        prelievo: { label: 'Prelievo', cls: 'text-orange-400 bg-orange-400/10', icon: 'fa-minus' }
+    };
+
+    rows.forEach(m => {
+        const meta = typeMeta[m.type] || { label: m.type || '—', cls: 'text-gray-400 bg-gray-700', icon: 'fa-circle' };
+        const amt = parseFloat(m.amount) || 0;
+        const amtCls = amt >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const amtSign = amt >= 0 ? '+' : '';
+        const deleteBtn = canDelete
+            ? `<button onclick="window.deleteSaldoMovimento('${m.id}')" class="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition" title="Elimina movimento">
+                    <i class="fa-solid fa-trash text-[10px]"></i>
+               </button>`
+            : '';
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-750/50 border-b border-gray-700">
+                <td class="p-3 text-xs text-gray-400 whitespace-nowrap">${m.dateString || '—'}</td>
+                <td class="p-3">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold ${meta.cls}">
+                        <i class="fa-solid ${meta.icon}"></i> ${meta.label}
+                    </span>
+                </td>
+                <td class="p-3 text-gray-200 text-xs">${m.description || '—'}</td>
+                <td class="p-3 text-gray-300 text-xs">${m.employeeName || m.createdBy || '—'}</td>
+                <td class="p-3 text-right font-bold ${amtCls}">${amtSign}${formatValuta(Math.abs(amt))}</td>
+                <td class="p-3 text-right">${deleteBtn}</td>
+            </tr>
+        `;
+    });
+}
+
+window.deleteSaldoMovimento = function(id) {
+    if (userRole !== 'gestore') {
+        showToast("Solo il gestore può eliminare i movimenti saldo.", "error");
+        return;
+    }
+    const mov = localSaldoMovimenti.find(m => m.id === id);
+    if (!mov) {
+        showToast("Movimento non trovato.", "error");
+        return;
+    }
+    showConfirmModal(
+        "Elimina movimento saldo",
+        `Eliminare il movimento "${mov.type}" di ${formatValuta(Math.abs(mov.amount || 0))}? Questa azione non crea uno storno automatico.`,
+        () => {
+            db.collection('saldo_movimenti').doc(id).delete()
+                .then(() => {
+                    localSaldoMovimenti = localSaldoMovimenti.filter(m => m.id !== id);
+                    forceRefreshAfterWrite('saldo');
+                    showToast("Movimento eliminato.", "info");
+                })
+                .catch(err => showToast(err.message, "error"));
+        },
+        true
+    );
+};
+
+document.getElementById('saldo-manual-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (userRole !== 'gestore') {
+        showToast("Solo il gestore può modificare il saldo manualmente.", "error");
+        return;
+    }
+    const type = document.getElementById('saldo-manual-type').value;
+    const amountRaw = parseFloat(document.getElementById('saldo-manual-amount').value);
+    const reason = (document.getElementById('saldo-manual-reason').value || '').trim();
+    if (isNaN(amountRaw) || amountRaw <= 0) {
+        showToast("Inserisci un importo valido maggiore di zero.", "warning");
+        return;
+    }
+    const isPrelievo = type === 'prelievo';
+    const payload = {
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleString('it-IT'),
+        type: isPrelievo ? 'prelievo' : 'aggiunta',
+        amount: isPrelievo ? -Math.abs(amountRaw) : Math.abs(amountRaw),
+        description: reason || (isPrelievo ? 'Prelievo manuale gestore' : 'Aggiunta manuale gestore'),
+        employeeId: '',
+        employeeName: 'Gestore',
+        saleId: '',
+        createdBy: 'gestore'
+    };
+    db.collection('saldo_movimenti').add(payload)
+        .then((ref) => {
+            if (ref && ref.id) {
+                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
+                forceRefreshAfterWrite('saldo');
+            }
+            e.target.reset();
+            showToast(isPrelievo ? "Prelievo registrato sul saldo." : "Aggiunta registrata sul saldo.", "success");
+        })
+        .catch(err => showToast("Errore: " + err.message, "error"));
+});

@@ -205,6 +205,10 @@
                 <button id="nav-inventory-fen-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
                     <i class="fa-solid fa-boxes-stacked mr-1"></i> Inv. Fenici
                 </button>
+                <!-- Saldo Yellow Jack -->
+                <button id="nav-saldo-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm hidden">
+                    <i class="fa-solid fa-wallet mr-1"></i> Saldo
+                </button>
                 <!-- Gestione (solo gestore) -->
                 <button id="nav-admin-btn" class="px-3 py-2 rounded-xl bg-gray-700 text-gray-200 font-medium transition hover:bg-gray-600 text-sm">
                     <i class="fa-solid fa-user-gear mr-1"></i> Gestione
@@ -497,6 +501,80 @@
                 </div>
             </section>
 
+
+            <!-- ========== SEZIONE SALDO YELLOW JACK ========== -->
+            <section id="saldo-section" class="hidden space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-gray-800/90 backdrop-blur-sm p-5 rounded-2xl border border-gray-700 shadow-xl">
+                        <p class="text-gray-400 text-xs uppercase font-medium tracking-wider">Saldo attuale</p>
+                        <p id="saldo-balance" class="text-3xl font-extrabold text-emerald-400 mt-2">€ 0,00</p>
+                        <p class="text-[11px] text-gray-500 mt-1">Solo movimenti Yellow Jack</p>
+                    </div>
+                    <div class="bg-gray-800/90 backdrop-blur-sm p-5 rounded-2xl border border-gray-700 shadow-xl">
+                        <p class="text-gray-400 text-xs uppercase font-medium tracking-wider">Entrate (vendite + aggiunte)</p>
+                        <p id="saldo-entrate" class="text-2xl font-bold text-amber-400 mt-2">€ 0,00</p>
+                    </div>
+                    <div class="bg-gray-800/90 backdrop-blur-sm p-5 rounded-2xl border border-gray-700 shadow-xl">
+                        <p class="text-gray-400 text-xs uppercase font-medium tracking-wider">Uscite (storni + prelievi)</p>
+                        <p id="saldo-uscite" class="text-2xl font-bold text-red-400 mt-2">€ 0,00</p>
+                    </div>
+                </div>
+
+                <div id="saldo-gestore-controls" class="hidden bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border-2 border-amber-500/40 shadow-xl">
+                    <h2 class="text-lg font-bold text-amber-400 mb-2 flex items-center">
+                        <i class="fa-solid fa-scale-balanced mr-2"></i> Operazione manuale sul saldo (solo gestore)
+                    </h2>
+                    <p class="text-gray-400 text-xs mb-4">Aggiungi o togli denaro dal saldo senza collegarlo a una vendita. Le vendite YJ e gli storni vengono registrati automaticamente.</p>
+                    <form id="saldo-manual-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Tipo</label>
+                            <select id="saldo-manual-type" required class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                                <option value="aggiunta">➕ Aggiungi</option>
+                                <option value="prelievo">➖ Togli</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Importo (€)</label>
+                            <input type="number" step="0.01" min="0.01" id="saldo-manual-amount" required placeholder="0.00" class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500 font-bold text-emerald-400">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Motivo / Nota</label>
+                            <input type="text" id="saldo-manual-reason" placeholder="Es. Versamento cassa, spesa materiale..." class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-900 font-extrabold rounded-xl transition shadow-lg">
+                                <i class="fa-solid fa-check mr-1"></i> Registra
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center">
+                            <i class="fa-solid fa-list-ul mr-2"></i> Movimenti saldo
+                        </h2>
+                        <p class="text-[11px] text-gray-500">Vendite YJ = <span class="text-emerald-400 font-semibold">vendita</span> · Eliminazione vendita = <span class="text-red-400 font-semibold">storno</span></p>
+                    </div>
+                    <div class="overflow-x-auto max-h-[min(60vh,520px)] overflow-y-auto border border-gray-700 rounded-xl">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-gray-800 z-10">
+                                    <th class="p-3">Data</th>
+                                    <th class="p-3">Tipo</th>
+                                    <th class="p-3">Descrizione</th>
+                                    <th class="p-3">Operatore</th>
+                                    <th class="p-3 text-right">Importo</th>
+                                    <th class="p-3 text-right">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saldo-movimenti-table" class="divide-y divide-gray-700">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- ========== SEZIONE ADMIN / GESTIONE ========== -->
             <section id="admin-section" class="hidden space-y-8">
 
@@ -735,6 +813,10 @@
                                 <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
                                     <input type="checkbox" id="role-inv-fen" class="rounded text-amber-500 focus:ring-amber-500">
                                     <span class="text-xs text-gray-200">Inventario Fenici</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-xl border border-gray-600 cursor-pointer hover:border-amber-500">
+                                    <input type="checkbox" id="role-saldo" class="rounded text-amber-500 focus:ring-amber-500">
+                                    <span class="text-xs text-gray-200">Saldo Yellow</span>
                                 </label>
                             </div>
                         </div>
