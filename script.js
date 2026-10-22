@@ -284,8 +284,10 @@ window.closeSmartModal = function() {
     setTimeout(() => { modal.classList.add('hidden'); }, 200);
 };
 
+let _smartModalSubmitting = false;
 document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (_smartModalSubmitting) return;
     const type = document.getElementById('smart-modal-type').value;
     const itemId = document.getElementById('smart-modal-item-id').value;
     const empId = document.getElementById('smart-modal-employee').value;
@@ -361,6 +363,9 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
         }).catch(err => showToast("Errore: " + err.message, "error"));
 
     } else if (type.startsWith('sale_')) {
+        _smartModalSubmitting = true;
+        const submitBtnLock = document.getElementById('smart-modal-submit');
+        if (submitBtnLock) submitBtnLock.disabled = true;
         const isYJ = type.includes('_yj');
         const salesCollection = isYJ ? 'current_sales' : 'current_sales_fen';
         const catalog = isYJ ? localCatalogYJ : localCatalogFen;
@@ -377,16 +382,23 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
         const empPct = localEmployees[empId].customPercentage ? parseFloat(localEmployees[empId].customPercentage) : 40;
         saleData.appliedPercentage = empPct;
 
+        const unlockSmartModal = () => {
+            _smartModalSubmitting = false;
+            const b = document.getElementById('smart-modal-submit');
+            if (b) b.disabled = false;
+        };
         if (type.includes('custom')) {
             const name = document.getElementById('smart-modal-custom-name').value.trim();
             const baseUnit = parseFloat(document.getElementById('smart-modal-price').value);
             const freePct = parseFloat(document.getElementById('smart-modal-free-pct')?.value);
             if (!name || isNaN(baseUnit) || baseUnit < 0) {
                 showToast("Compila nome e prezzo base.", "warning");
+                unlockSmartModal();
                 return;
             }
             if (isNaN(freePct) || freePct < 0) {
                 showToast("Inserisci la % guadagno Yellow (≥ 0).", "warning");
+                unlockSmartModal();
                 return;
             }
             // % inserita = guadagno Yellow (aggiunta sul prezzo base)
@@ -406,6 +418,11 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
             saleData.appliedPercentage = empPct; // % personale dipendente
         } else {
             const item = catalog[itemId];
+            if (!item) {
+                showToast("Servizio non trovato.", "error");
+                unlockSmartModal();
+                return;
+            }
             const finalTotalPrice = item.price * qty;
             const finalYellowCost = (item.cost || 0) * qty;
             const yellowGain = finalTotalPrice - finalYellowCost;
@@ -419,24 +436,20 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
 
         db.collection(salesCollection).add(saleData)
             .then((docRef) => {
-                // Ottimistico: inserisci in locale e ridisegna subito
-                const localKey = docRef && docRef.id ? docRef.id : ('local_' + Date.now());
-                if (isYJ) {
-                    localSalesYJ[localKey] = saleData;
-                    forceRefreshAfterWrite('sale_yj');
-                    // Registra automaticamente sul saldo Yellow
-                    if (typeof registerSaldoVendita === 'function') {
-                        registerSaldoVendita(localKey, saleData);
-                    }
-                } else {
-                    localSalesFen[localKey] = saleData;
-                    forceRefreshAfterWrite('sale_fen');
+                const saleId = (docRef && docRef.id) ? docRef.id : '';
+                // Non inserire in locale: il listener onSnapshot aggiorna una sola volta
+                if (isYJ && saleId && typeof registerSaldoVendita === 'function') {
+                    registerSaldoVendita(saleId, saleData);
                 }
-                if (userRole === 'gestore') forceRefreshAfterWrite('admin');
                 closeSmartModal();
                 showToast("Vendita registrata!", "success");
             })
-            .catch(err => showToast("Errore: " + err.message, "error"));
+            .catch(err => showToast("Errore: " + err.message, "error"))
+            .finally(() => {
+                _smartModalSubmitting = false;
+                const b = document.getElementById('smart-modal-submit');
+                if (b) b.disabled = false;
+            });
     }
 });
 
@@ -1782,16 +1795,10 @@ function handleSaleSubmit(e, isYJ) {
 
     db.collection(collection).add(saleData)
         .then((docRef) => {
-            const localKey = docRef && docRef.id ? docRef.id : ('local_' + Date.now());
-            if (isYJ) {
-                localSalesYJ[localKey] = saleData;
-                forceRefreshAfterWrite('sale_yj');
-                if (typeof registerSaldoVendita === 'function') registerSaldoVendita(localKey, saleData);
-            } else {
-                localSalesFen[localKey] = saleData;
-                forceRefreshAfterWrite('sale_fen');
+            const saleId = (docRef && docRef.id) ? docRef.id : '';
+            if (isYJ && saleId && typeof registerSaldoVendita === 'function') {
+                registerSaldoVendita(saleId, saleData);
             }
-            if (userRole === 'gestore') forceRefreshAfterWrite('admin');
             e.target.reset();
             qtyInput.value = "1";
             showToast("Vendita registrata!", "success");
@@ -2885,10 +2892,19 @@ function renderArchive(archiveList) {
 
 // ===== SALDO YELLOW JACK =====
 /** Tipi movimento: vendita | storno | aggiunta | prelievo */
+const _saldoPendingSaleIds = new Set(); // evita doppie scritture per la stessa vendita
+
 function registerSaldoVendita(saleId, saleData) {
     if (!saleData) return;
     const amount = parseFloat(saleData.totalPrice) || 0;
     if (amount <= 0) return;
+    const sid = saleId ? String(saleId) : '';
+    // Già presente in locale o richiesta già in corso → non scrivere di nuovo
+    if (sid) {
+        if (_saldoPendingSaleIds.has('v:' + sid)) return;
+        if (localSaldoMovimenti.some(m => m.type === 'vendita' && String(m.saleId || '') === sid)) return;
+        _saldoPendingSaleIds.add('v:' + sid);
+    }
     const payload = {
         timestamp: Date.now(),
         dateString: new Date().toLocaleString('it-IT'),
@@ -2897,23 +2913,28 @@ function registerSaldoVendita(saleId, saleData) {
         description: (saleData.serviceName || 'Vendita') + (saleData.quantity ? ' x' + saleData.quantity : ''),
         employeeId: saleData.employeeKey || '',
         employeeName: saleData.employeeName || '',
-        saleId: saleId || '',
+        saleId: sid,
         createdBy: userRole === 'gestore' ? 'gestore' : (staffSession?.name || saleData.employeeName || 'staff')
     };
+    // Solo Firestore: il listener aggiorna localSaldoMovimenti (niente unshift ottimistico → niente doppioni)
     db.collection('saldo_movimenti').add(payload)
-        .then((ref) => {
-            if (ref && ref.id) {
-                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
-                forceRefreshAfterWrite('saldo');
-            }
-        })
-        .catch(err => console.warn('Saldo vendita non registrata:', err.message));
+        .then(() => { /* listener onSnapshot ridisegna */ })
+        .catch(err => {
+            if (sid) _saldoPendingSaleIds.delete('v:' + sid);
+            console.warn('Saldo vendita non registrata:', err.message);
+        });
 }
 
 function registerSaldoStorno(saleId, saleData) {
     if (!saleData) return;
     const amount = parseFloat(saleData.totalPrice) || 0;
     if (amount <= 0) return;
+    const sid = saleId ? String(saleId) : '';
+    if (sid) {
+        if (_saldoPendingSaleIds.has('s:' + sid)) return;
+        if (localSaldoMovimenti.some(m => m.type === 'storno' && String(m.saleId || '') === sid)) return;
+        _saldoPendingSaleIds.add('s:' + sid);
+    }
     const payload = {
         timestamp: Date.now(),
         dateString: new Date().toLocaleString('it-IT'),
@@ -2922,17 +2943,15 @@ function registerSaldoStorno(saleId, saleData) {
         description: 'Storno: ' + (saleData.serviceName || 'Vendita') + (saleData.quantity ? ' x' + saleData.quantity : ''),
         employeeId: saleData.employeeKey || '',
         employeeName: saleData.employeeName || '',
-        saleId: saleId || '',
+        saleId: sid,
         createdBy: 'gestore'
     };
     db.collection('saldo_movimenti').add(payload)
-        .then((ref) => {
-            if (ref && ref.id) {
-                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
-                forceRefreshAfterWrite('saldo');
-            }
-        })
-        .catch(err => console.warn('Saldo storno non registrato:', err.message));
+        .then(() => { /* listener onSnapshot ridisegna */ })
+        .catch(err => {
+            if (sid) _saldoPendingSaleIds.delete('s:' + sid);
+            console.warn('Saldo storno non registrato:', err.message);
+        });
 }
 
 function renderSaldoSection() {
@@ -2943,7 +2962,17 @@ function renderSaldoSection() {
     if (!tbody) return;
 
     let balance = 0, entrate = 0, uscite = 0;
-    const rows = [...localSaldoMovimenti].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    // Dedup per id (evita doppioni da race listener/ottimistico)
+    const seenIds = new Set();
+    const rows = [];
+    [...localSaldoMovimenti]
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .forEach(m => {
+            const id = m.id || '';
+            if (id && seenIds.has(id)) return;
+            if (id) seenIds.add(id);
+            rows.push(m);
+        });
 
     rows.forEach(m => {
         const amt = parseFloat(m.amount) || 0;
@@ -3052,13 +3081,10 @@ document.getElementById('saldo-manual-form')?.addEventListener('submit', (e) => 
         createdBy: 'gestore'
     };
     db.collection('saldo_movimenti').add(payload)
-        .then((ref) => {
-            if (ref && ref.id) {
-                localSaldoMovimenti.unshift({ id: ref.id, ...payload });
-                forceRefreshAfterWrite('saldo');
-            }
+        .then(() => {
             e.target.reset();
             showToast(isPrelievo ? "Prelievo registrato sul saldo." : "Aggiunta registrata sul saldo.", "success");
+            // Il listener onSnapshot aggiorna la lista una sola volta
         })
         .catch(err => showToast("Errore: " + err.message, "error"));
 });
