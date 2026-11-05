@@ -14,6 +14,17 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Persistenza offline: riduce letture ripetute sulla stessa sessione/device
+try {
+    db.enablePersistence({ synchronizeTabs: true }).catch(function (err) {
+        if (err.code === 'failed-precondition') {
+            console.warn('Firestore persistence: più tab aperte, una sola ha la cache.');
+        } else if (err.code === 'unimplemented') {
+            console.warn('Firestore persistence non supportata su questo browser.');
+        }
+    });
+} catch (e) { /* ignore */ }
+
 // Stato Globale
 let currentUser = null;
 let userRole = null; // 'gestore' | 'dipendente'
@@ -534,21 +545,43 @@ loginStaffForm?.addEventListener('submit', async (e) => {
     }
 
     try {
-        // Nessuna Auth Firebase: lettura diretta employees (regole: allow read pubblici)
-        const snap = await db.collection('employees').get();
+        // Preferisci cache locale se già caricata (0 letture extra), altrimenti 1 get della collection
         const nickLower = nick.toLowerCase();
         let found = null;
         let foundId = null;
 
-        snap.forEach(doc => {
-            const d = doc.data();
+        function matchEmp(id, d) {
+            if (!d) return false;
             const loginMatch = (d.login || '').trim().toLowerCase() === nickLower;
             const nameMatch = (d.name || '').trim().toLowerCase() === nickLower;
-            if ((loginMatch || nameMatch) && String(d.password) === String(password)) {
-                found = d;
-                foundId = doc.id;
+            return (loginMatch || nameMatch) && String(d.password) === String(password);
+        }
+
+        const cachedKeys = Object.keys(localEmployees || {});
+        if (cachedKeys.length > 0) {
+            for (let i = 0; i < cachedKeys.length; i++) {
+                const id = cachedKeys[i];
+                if (matchEmp(id, localEmployees[id])) {
+                    found = localEmployees[id];
+                    foundId = id;
+                    break;
+                }
             }
-        });
+        }
+
+        if (!found) {
+            // Una sola lettura collection (necessaria se non c'è cache)
+            const snap = await db.collection('employees').get();
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (!found && matchEmp(doc.id, d)) {
+                    found = d;
+                    foundId = doc.id;
+                }
+                // Popola anche la cache locale per usi successivi
+                localEmployees[doc.id] = d;
+            });
+        }
 
         if (!found) {
             showToast("Nickname o password non validi.", "error");
@@ -642,6 +675,7 @@ logoutBtn.addEventListener('click', () => {
     currentEmployeeId = null;
     currentEmployeeData = null;
     userRole = null;
+    if (typeof _fsStopAll === 'function') _fsStopAll();
     if (auth.currentUser) {
         auth.signOut().then(() => window.location.reload());
     } else {
@@ -863,167 +897,361 @@ function showSection(section) {
         navAdminBtn.className = activeClass;
     }
 
+    // Avvia eventuali listener lazy per questa sezione (senza chiudere gli altri)
+    if (typeof ensureListenersForSection === 'function') {
+        ensureListenersForSection(section);
+    }
     // Disegna solo la sezione aperta (dati già in memoria)
     scheduleUI(function () { refreshActiveSectionUI(); });
 }
 
 // --- LISTENERS FIRESTORE (avvio a fasi + render solo sezione attiva) ---
 let listenersStarted = false;
+/** Registry: key -> unsubscribe fn. Permette start/stop selettivo e cleanup logout. */
+const _fsUnsubs = {};
+const _fsActive = new Set();
 
-function initDatabaseListeners() {
-    if (listenersStarted) return;
-    listenersStarted = true;
+function _fsStop(key) {
+    if (_fsUnsubs[key]) {
+        try { _fsUnsubs[key](); } catch (_) {}
+        delete _fsUnsubs[key];
+    }
+    _fsActive.delete(key);
+}
 
-    // FASE 1: essenziali subito
-    db.collection('employees').onSnapshot(snapshot => {
-        localEmployees = {};
-        snapshot.forEach(doc => { localEmployees[doc.id] = doc.data(); });
-        scheduleUI(function () {
+function _fsStopAll() {
+    Object.keys(_fsUnsubs).forEach(_fsStop);
+    listenersStarted = false;
+}
+
+/**
+ * Avvia un onSnapshot una sola volta per chiave.
+ * opts: { query, mapLocal, onUpdate, scheduleKey, delay }
+ * mapLocal(snapshot) aggiorna lo stato locale; onUpdate() ridisegna UI se serve.
+ * Usa docChanges quando possibile per evitare lavoro inutile su snapshot identici.
+ */
+function _fsListen(key, query, handlers) {
+    if (_fsActive.has(key)) return;
+    _fsActive.add(key);
+    const delay = (handlers && handlers.delay != null) ? handlers.delay : 30;
+    const scheduleKey = (handlers && handlers.scheduleKey) || key;
+    const unsub = query.onSnapshot(
+        { includeMetadataChanges: false },
+        function (snapshot) {
+            try {
+                if (handlers && typeof handlers.apply === 'function') {
+                    handlers.apply(snapshot);
+                }
+                if (handlers && typeof handlers.onUpdate === 'function') {
+                    scheduleUI(handlers.onUpdate, delay, scheduleKey);
+                }
+            } catch (e) {
+                console.error('Listener ' + key + ':', e);
+            }
+        },
+        function (err) {
+            console.warn('Firestore listener [' + key + ']:', err && err.message ? err.message : err);
+            // Permetti retry successivo
+            _fsActive.delete(key);
+            delete _fsUnsubs[key];
+        }
+    );
+    _fsUnsubs[key] = unsub;
+}
+
+/** Listener essenziali sempre attivi (collezioni piccole / critiche per UI). */
+function startEssentialListeners() {
+    _fsListen('employees', db.collection('employees'), {
+        delay: 40,
+        apply: function (snapshot) {
+            localEmployees = {};
+            snapshot.forEach(function (doc) { localEmployees[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
             if (typeof renderAllEmployeeDropdowns === 'function') renderAllEmployeeDropdowns();
             if (typeof renderAdminFilterDropdown === 'function') renderAdminFilterDropdown();
             if (isAdminOpen() && typeof renderEmployees === 'function') renderEmployees();
-        }, 30, 'employees');
+        }
     });
 
-    db.collection('catalog').onSnapshot(snapshot => {
-        localCatalogYJ = {};
-        snapshot.forEach(doc => { localCatalogYJ[doc.id] = doc.data(); });
-        scheduleUI(function () {
+    _fsListen('catalog', db.collection('catalog'), {
+        delay: 40,
+        apply: function (snapshot) {
+            localCatalogYJ = {};
+            snapshot.forEach(function (doc) { localCatalogYJ[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
             if (isSectionVisible('sales-yj')) {
                 if (typeof renderSalesYjDropdowns === 'function') renderSalesYjDropdowns();
                 if (typeof renderQuickSalesYjGrid === 'function') renderQuickSalesYjGrid();
             }
             if (isAdminOpen() && typeof renderCatalogYJ === 'function') renderCatalogYJ();
-        }, 30, 'catalog_yj');
+        }
     });
 
-    db.collection('catalog_fen').onSnapshot(snapshot => {
-        localCatalogFen = {};
-        snapshot.forEach(doc => { localCatalogFen[doc.id] = doc.data(); });
-        scheduleUI(function () {
+    _fsListen('catalog_fen', db.collection('catalog_fen'), {
+        delay: 40,
+        apply: function (snapshot) {
+            localCatalogFen = {};
+            snapshot.forEach(function (doc) { localCatalogFen[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
             if (isSectionVisible('sales-fen')) {
                 if (typeof renderSalesFenDropdowns === 'function') renderSalesFenDropdowns();
                 if (typeof renderQuickSalesFenGrid === 'function') renderQuickSalesFenGrid();
             }
             if (isAdminOpen() && typeof renderCatalogFen === 'function') renderCatalogFen();
-        }, 30, 'catalog_fen');
+        }
     });
 
-    // FASE 2: vendite / depositi
-    setTimeout(function () {
-        db.collection('custom_stashes').onSnapshot(snapshot => {
+    _fsListen('stashes', db.collection('custom_stashes'), {
+        delay: 40,
+        apply: function (snapshot) {
             localStashes = {};
-            snapshot.forEach(doc => { localStashes[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (typeof renderStashDropdowns === 'function') renderStashDropdowns();
-                if (isAdminOpen() && typeof renderCustomStashesList === 'function') renderCustomStashesList();
-                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
-                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
-            }, 30, 'stashes');
-        });
+            snapshot.forEach(function (doc) { localStashes[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (typeof renderStashDropdowns === 'function') renderStashDropdowns();
+            if (isAdminOpen() && typeof renderCustomStashesList === 'function') renderCustomStashesList();
+            if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+            if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+        }
+    });
 
-        db.collection('current_sales').onSnapshot(snapshot => {
-            localSalesYJ = {};
-            snapshot.forEach(doc => { localSalesYJ[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (isSectionVisible('sales-yj') && typeof renderSalesYjTable === 'function') renderSalesYjTable();
-                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            }, 30, 'sales_yj');
-        });
-
-        db.collection('current_sales_fen').onSnapshot(snapshot => {
-            localSalesFen = {};
-            snapshot.forEach(doc => { localSalesFen[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (isSectionVisible('sales-fen') && typeof renderSalesFenTable === 'function') renderSalesFenTable();
-                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            }, 30, 'sales_fen');
-        });
-
-        db.collection('current_salaries_status').onSnapshot(snapshot => {
+    // Stato pagamenti: piccolo, utile in admin e dopo archivio
+    _fsListen('salaries', db.collection('current_salaries_status'), {
+        delay: 50,
+        apply: function (snapshot) {
             localSalariesStatus = {};
-            snapshot.forEach(doc => { localSalariesStatus[doc.id] = doc.data().status || 'non_pagato'; });
-            scheduleUI(function () {
-                if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
-            }, 30, 'salaries');
-        });
-    }, 80);
-
-    // FASE 3: inventari
-    setTimeout(function () {
-        db.collection('inventory_items').onSnapshot(snapshot => {
-            localInventoryYJ = {};
-            snapshot.forEach(doc => { localInventoryYJ[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (isSectionVisible('inventory-yj')) {
-                    if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
-                    if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
-                }
-            }, 20, 'inv_yj_items');
-        });
-
-        db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-            localInventoryYJLogs = [];
-            snapshot.forEach(doc => { localInventoryYJLogs.push({ id: doc.id, ...doc.data() }); });
-            scheduleUI(function () {
-                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
-            }, 20, 'inv_yj_logs');
-        });
-
-        db.collection('fenici_items').onSnapshot(snapshot => {
-            localInventoryFen = {};
-            snapshot.forEach(doc => { localInventoryFen[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (isSectionVisible('inventory-fen')) {
-                    if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
-                    if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
-                }
-            }, 20, 'inv_fen_items');
-        });
-
-        db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-            localInventoryFenLogs = [];
-            snapshot.forEach(doc => { localInventoryFenLogs.push({ id: doc.id, ...doc.data() }); });
-            scheduleUI(function () {
-                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
-            }, 20, 'inv_fen_logs');
-        });
-    }, 200);
-
-    // FASE 4: archivio + immagini (più pesanti)
-    setTimeout(function () {
-        db.collection('archive').onSnapshot(snapshot => {
-            localArchive = {};
-            snapshot.forEach(doc => { localArchive[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (isSectionVisible('sales-yj') && typeof renderSalesArchiveWindowYJ === 'function') renderSalesArchiveWindowYJ(localArchive);
-                if (isSectionVisible('sales-fen') && typeof renderSalesArchiveWindowFen === 'function') renderSalesArchiveWindowFen(localArchive);
-                if (isAdminOpen() && typeof renderArchive === 'function') renderArchive(localArchive);
-            }, 40, 'archive');
-        });
-
-        db.collection('item_images').onSnapshot(snapshot => {
-            localItemImages = {};
-            snapshot.forEach(doc => { localItemImages[doc.id] = doc.data(); });
-            scheduleUI(function () {
-                if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
-                if (isAdminOpen() && typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
-                if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
-                if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
-            }, 40, 'item_images');
-        });
-
-        // Saldo Yellow Jack – movimenti (vendite, storni, manuali)
-        db.collection('saldo_movimenti').orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
-            localSaldoMovimenti = [];
-            snapshot.forEach(doc => {
-                localSaldoMovimenti.push({ id: doc.id, ...doc.data() });
+            snapshot.forEach(function (doc) {
+                localSalariesStatus[doc.id] = (doc.data() && doc.data().status) || 'non_pagato';
             });
-            scheduleUI(function () {
-                if (isSectionVisible('saldo') && typeof renderSaldoSection === 'function') renderSaldoSection();
-            }, 30, 'saldo');
-        }, err => console.warn('saldo_movimenti listener:', err));
-    }, 350);
+        },
+        onUpdate: function () {
+            if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+        }
+    });
+}
+
+/** Listener vendite settimana corrente (YJ). */
+function startSalesYjListener() {
+    _fsListen('sales_yj', db.collection('current_sales'), {
+        delay: 25,
+        apply: function (snapshot) {
+            localSalesYJ = {};
+            snapshot.forEach(function (doc) { localSalesYJ[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('sales-yj') && typeof renderSalesYjTable === 'function') renderSalesYjTable();
+            if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+        }
+    });
+}
+
+function startSalesFenListener() {
+    _fsListen('sales_fen', db.collection('current_sales_fen'), {
+        delay: 25,
+        apply: function (snapshot) {
+            localSalesFen = {};
+            snapshot.forEach(function (doc) { localSalesFen[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('sales-fen') && typeof renderSalesFenTable === 'function') renderSalesFenTable();
+            if (isAdminOpen() && typeof calculateManagementData === 'function') calculateManagementData();
+        }
+    });
+}
+
+function startInventoryYjListeners() {
+    _fsListen('inv_yj_items', db.collection('inventory_items'), {
+        delay: 20,
+        apply: function (snapshot) {
+            localInventoryYJ = {};
+            snapshot.forEach(function (doc) { localInventoryYJ[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('inventory-yj')) {
+                if (typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+                if (typeof renderInventoryYjDropdowns === 'function') renderInventoryYjDropdowns();
+            }
+        }
+    });
+    _fsListen('inv_yj_logs', db.collection('inventory_logs').orderBy('timestamp', 'desc').limit(40), {
+        delay: 20,
+        apply: function (snapshot) {
+            localInventoryYJLogs = [];
+            snapshot.forEach(function (doc) {
+                localInventoryYJLogs.push(Object.assign({ id: doc.id }, doc.data()));
+            });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('inventory-yj') && typeof renderInventoryYjLogs === 'function') renderInventoryYjLogs();
+        }
+    });
+}
+
+function startInventoryFenListeners() {
+    _fsListen('inv_fen_items', db.collection('fenici_items'), {
+        delay: 20,
+        apply: function (snapshot) {
+            localInventoryFen = {};
+            snapshot.forEach(function (doc) { localInventoryFen[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('inventory-fen')) {
+                if (typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+                if (typeof renderInventoryFenDropdowns === 'function') renderInventoryFenDropdowns();
+            }
+        }
+    });
+    _fsListen('inv_fen_logs', db.collection('fenici_logs').orderBy('timestamp', 'desc').limit(40), {
+        delay: 20,
+        apply: function (snapshot) {
+            localInventoryFenLogs = [];
+            snapshot.forEach(function (doc) {
+                localInventoryFenLogs.push(Object.assign({ id: doc.id }, doc.data()));
+            });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('inventory-fen') && typeof renderInventoryFenLogs === 'function') renderInventoryFenLogs();
+        }
+    });
+}
+
+function startSaldoListener() {
+    // Limite ridotto a 100: sufficiente in UI e meno letture
+    _fsListen('saldo', db.collection('saldo_movimenti').orderBy('timestamp', 'desc').limit(100), {
+        delay: 30,
+        apply: function (snapshot) {
+            localSaldoMovimenti = [];
+            snapshot.forEach(function (doc) {
+                localSaldoMovimenti.push(Object.assign({ id: doc.id }, doc.data()));
+            });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('saldo') && typeof renderSaldoSection === 'function') renderSaldoSection();
+        }
+    });
+}
+
+function startArchiveListener() {
+    // Archivio solo per gestore (pesante: documenti con molte vendite annidate)
+    if (userRole !== 'gestore') return;
+    _fsListen('archive', db.collection('archive').orderBy('timestamp', 'desc').limit(30), {
+        delay: 60,
+        apply: function (snapshot) {
+            localArchive = {};
+            snapshot.forEach(function (doc) { localArchive[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (isSectionVisible('sales-yj') && typeof renderSalesArchiveWindowYJ === 'function') renderSalesArchiveWindowYJ(localArchive);
+            if (isSectionVisible('sales-fen') && typeof renderSalesArchiveWindowFen === 'function') renderSalesArchiveWindowFen(localArchive);
+            if (isAdminOpen() && typeof renderArchive === 'function') renderArchive(localArchive);
+        }
+    });
+}
+
+function startItemImagesListener() {
+    // Solo gestore: dataUrl pesanti
+    if (userRole !== 'gestore') return;
+    _fsListen('item_images', db.collection('item_images'), {
+        delay: 60,
+        apply: function (snapshot) {
+            localItemImages = {};
+            snapshot.forEach(function (doc) { localItemImages[doc.id] = doc.data(); });
+        },
+        onUpdate: function () {
+            if (typeof renderItemImageSelects === 'function') renderItemImageSelects();
+            if (isAdminOpen() && typeof renderItemImagesLibrary === 'function') renderItemImagesLibrary();
+            if (isSectionVisible('inventory-yj') && typeof renderInventoryYjGrid === 'function') renderInventoryYjGrid();
+            if (isSectionVisible('inventory-fen') && typeof renderInventoryFenGrid === 'function') renderInventoryFenGrid();
+        }
+    });
+}
+
+/**
+ * Avvia i listener necessari per la sezione corrente e per i permessi utente.
+ * Non spegne quelli già attivi (costerebbe re-letture complete).
+ * Su logout si chiama _fsStopAll().
+ */
+function ensureListenersForSection(section) {
+    const isGestore = userRole === 'gestore';
+    const roles = (staffSession && staffSession.roles) || {};
+
+    // Essenziali già avviati in initDatabaseListeners
+
+    // Vendite
+    if (isGestore || roles.salesYJ || section === 'sales-yj' || section === 'admin') {
+        startSalesYjListener();
+    }
+    if (isGestore || roles.salesFen || section === 'sales-fen' || section === 'admin') {
+        startSalesFenListener();
+    }
+
+    // Inventari
+    if (isGestore || roles.invYJ || section === 'inventory-yj') {
+        startInventoryYjListeners();
+    }
+    if (isGestore || roles.invFen || section === 'inventory-fen') {
+        startInventoryFenListeners();
+    }
+
+    // Saldo
+    if (isGestore || roles.saldo || section === 'saldo') {
+        startSaldoListener();
+    }
+
+    // Solo gestore
+    if (isGestore) {
+        if (section === 'admin' || section === 'sales-yj' || section === 'sales-fen') {
+            startArchiveListener();
+        }
+        if (section === 'admin' || section === 'inventory-yj' || section === 'inventory-fen') {
+            startItemImagesListener();
+        }
+    }
+}
+
+function initDatabaseListeners() {
+    if (listenersStarted) {
+        // Già avviati: assicurati solo i listener della sezione corrente
+        ensureListenersForSection(currentSectionId || 'sales-yj');
+        return;
+    }
+    listenersStarted = true;
+
+    startEssentialListeners();
+
+    // Avvio differito dei dati più pesanti in base a ruolo / prima sezione
+    const isGestore = userRole === 'gestore';
+    const roles = (staffSession && staffSession.roles) || {};
+
+    // Fase 2: vendite (quasi sempre necessarie)
+    setTimeout(function () {
+        if (isGestore || roles.salesYJ) startSalesYjListener();
+        if (isGestore || roles.salesFen) startSalesFenListener();
+    }, 60);
+
+    // Fase 3: inventari solo se l'utente ha permesso
+    setTimeout(function () {
+        if (isGestore || roles.invYJ) startInventoryYjListeners();
+        if (isGestore || roles.invFen) startInventoryFenListeners();
+    }, 180);
+
+    // Fase 4: saldo / archivio / immagini – lazy per ruolo
+    setTimeout(function () {
+        if (isGestore || roles.saldo) startSaldoListener();
+        if (isGestore) {
+            // Archivio e immagini solo se gestore (non staff)
+            // Non partono subito se non servono: ensureListenersForSection li avvia entrando in admin/sales
+            if (currentSectionId === 'admin' || currentSectionId === 'sales-yj' || currentSectionId === 'sales-fen') {
+                startArchiveListener();
+            }
+            if (currentSectionId === 'admin' || currentSectionId === 'inventory-yj' || currentSectionId === 'inventory-fen') {
+                startItemImagesListener();
+            }
+        }
+    }, 320);
 }
 
 // Protezione
@@ -2781,12 +3009,26 @@ function archiveCurrentWeek() {
         salariesReport: finalStaffSalariesReport
     };
 
-    db.collection('archive').add(archiveData).then(() => {
-        Object.keys(localSalesYJ).forEach(sk => db.collection('current_sales').doc(sk).delete());
-        Object.keys(localSalesFen).forEach(sk => db.collection('current_sales_fen').doc(sk).delete());
-        Object.keys(localSalariesStatus).forEach(ek => db.collection('current_salaries_status').doc(ek).delete());
-        if (adminEmployeeFilter) adminEmployeeFilter.value = "all";
-        showToast("Settimana archiviata e bilanci azzerati!", "success");
+    db.collection('archive').add(archiveData).then(async () => {
+        // Batch delete (max ~400 op / batch) invece di N delete singoli → meno round-trip e più stabile
+        async function batchDelete(collectionName, ids) {
+            const list = Array.from(ids);
+            for (let i = 0; i < list.length; i += 400) {
+                const chunk = list.slice(i, i + 400);
+                const batch = db.batch();
+                chunk.forEach(id => batch.delete(db.collection(collectionName).doc(id)));
+                await batch.commit();
+            }
+        }
+        try {
+            await batchDelete('current_sales', Object.keys(localSalesYJ));
+            await batchDelete('current_sales_fen', Object.keys(localSalesFen));
+            await batchDelete('current_salaries_status', Object.keys(localSalariesStatus));
+            if (adminEmployeeFilter) adminEmployeeFilter.value = "all";
+            showToast("Settimana archiviata e bilanci azzerati!", "success");
+        } catch (err) {
+            showToast(err.message || String(err), "error");
+        }
     }).catch(err => showToast(err.message, "error"));
 }
 
@@ -2816,16 +3058,26 @@ document.getElementById('archive-single-employee-btn')?.addEventListener('click'
         Object.keys(singleSales).forEach(sk => { report[empKey].salary += singleSales[sk].employeeGain; });
         db.collection('archive').add({
             title: archiveTitle, timestamp: Date.now(), sales: singleSales, salariesReport: report
-        }).then(() => {
-            Object.keys(localSalesYJ).forEach(sk => {
-                if (localSalesYJ[sk].employeeKey === empKey) db.collection('current_sales').doc(sk).delete();
-            });
-            Object.keys(localSalesFen).forEach(sk => {
-                if (localSalesFen[sk].employeeKey === empKey) db.collection('current_sales_fen').doc(sk).delete();
-            });
-            db.collection('current_salaries_status').doc(empKey).delete();
-            if (adminEmployeeFilter) adminEmployeeFilter.value = "all";
-            showToast(`Settimana di ${empName} archiviata!`, "success");
+        }).then(async () => {
+            const yjIds = Object.keys(localSalesYJ).filter(sk => localSalesYJ[sk].employeeKey === empKey);
+            const fenIds = Object.keys(localSalesFen).filter(sk => localSalesFen[sk].employeeKey === empKey);
+            async function batchDelete(collectionName, ids) {
+                for (let i = 0; i < ids.length; i += 400) {
+                    const chunk = ids.slice(i, i + 400);
+                    const batch = db.batch();
+                    chunk.forEach(id => batch.delete(db.collection(collectionName).doc(id)));
+                    await batch.commit();
+                }
+            }
+            try {
+                await batchDelete('current_sales', yjIds);
+                await batchDelete('current_sales_fen', fenIds);
+                await db.collection('current_salaries_status').doc(empKey).delete();
+                if (adminEmployeeFilter) adminEmployeeFilter.value = "all";
+                showToast(`Settimana di ${empName} archiviata!`, "success");
+            } catch (err) {
+                showToast(err.message || String(err), "error");
+            }
         }).catch(err => showToast(err.message, "error"));
     }, false);
 });
