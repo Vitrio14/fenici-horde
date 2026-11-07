@@ -296,6 +296,11 @@ window.closeSmartModal = function() {
 };
 
 let _smartModalSubmitting = false;
+function _unlockSmartModal() {
+    _smartModalSubmitting = false;
+    const b = document.getElementById('smart-modal-submit');
+    if (b) b.disabled = false;
+}
 document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
     e.preventDefault();
     if (_smartModalSubmitting) return;
@@ -310,18 +315,27 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
     }
 
     if (type === 'inv_yj' || type === 'inv_fen') {
+        // Lock anti doppio-click (stesso meccanismo delle vendite)
+        _smartModalSubmitting = true;
+        const submitBtnLock = document.getElementById('smart-modal-submit');
+        if (submitBtnLock) submitBtnLock.disabled = true;
+
         const action = document.getElementById('smart-modal-action').value;
         const reason = document.getElementById('smart-modal-reason').value.trim();
         const collectionItems = type === 'inv_yj' ? 'inventory_items' : 'fenici_items';
         const collectionLogs = type === 'inv_yj' ? 'inventory_logs' : 'fenici_logs';
         const localData = type === 'inv_yj' ? localInventoryYJ : localInventoryFen;
         const item = localData[itemId];
-        if (!item) return;
+        if (!item) {
+            _unlockSmartModal();
+            return;
+        }
 
         let newQty = item.quantity;
         if (action === 'preleva') {
             if (qty > item.quantity) {
                 showToast(`Impossibile prelevare ${qty}, disponibile: ${item.quantity}.`, "error");
+                _unlockSmartModal();
                 return;
             }
             newQty -= qty;
@@ -346,32 +360,18 @@ document.getElementById('smart-modal-form').addEventListener('submit', (e) => {
             reason: reason
         });
         batch.commit().then(() => {
-            // Aggiornamento ottimistico locale → UI immediata (il listener sincronizzerà dopo)
+            // Solo qty ottimistica: il log arriva UNA sola volta dal listener onSnapshot
+            // (niente unshift locale → evita doppioni temporanei o permanenti in UI)
             if (localData[itemId]) localData[itemId].quantity = newQty;
-            const logEntry = {
-                id: 'local_' + Date.now(),
-                timestamp: Date.now(),
-                dateString: new Date().toLocaleString('it-IT'),
-                employeeId: empId,
-                employeeName: empName,
-                itemId: itemId,
-                itemName: item.name,
-                action: action,
-                quantity: qty,
-                reason: reason
-            };
             if (type === 'inv_yj') {
-                localInventoryYJLogs.unshift(logEntry);
-                if (localInventoryYJLogs.length > 50) localInventoryYJLogs.pop();
                 forceRefreshAfterWrite('inv_yj');
             } else {
-                localInventoryFenLogs.unshift(logEntry);
-                if (localInventoryFenLogs.length > 50) localInventoryFenLogs.pop();
                 forceRefreshAfterWrite('inv_fen');
             }
             closeSmartModal();
             showToast(`Movimento completato!`, "success");
-        }).catch(err => showToast("Errore: " + err.message, "error"));
+        }).catch(err => showToast("Errore: " + err.message, "error"))
+        .finally(() => { _unlockSmartModal(); });
 
     } else if (type.startsWith('sale_')) {
         _smartModalSubmitting = true;
@@ -1962,8 +1962,10 @@ document.getElementById('sale-fen-service-select')?.addEventListener('change', (
 });
 
 // --- SALE FORMS ---
+let _saleFormSubmitting = false;
 function handleSaleSubmit(e, isYJ) {
     e.preventDefault();
+    if (_saleFormSubmitting) return;
     const empSelect = document.getElementById(isYJ ? 'sale-yj-employee' : 'sale-fen-employee');
     const serviceSelect = document.getElementById(isYJ ? 'sale-yj-service-select' : 'sale-fen-service-select');
     const qtyInput = document.getElementById(isYJ ? 'sale-yj-quantity' : 'sale-fen-quantity');
@@ -2021,9 +2023,11 @@ function handleSaleSubmit(e, isYJ) {
         saleData.employeeGain = employeeGain;
     }
 
+    _saleFormSubmitting = true;
     db.collection(collection).add(saleData)
         .then((docRef) => {
             const saleId = (docRef && docRef.id) ? docRef.id : '';
+            // Nessun insert locale: il listener onSnapshot aggiorna una sola volta
             if (isYJ && saleId && typeof registerSaldoVendita === 'function') {
                 registerSaldoVendita(saleId, saleData);
             }
@@ -2031,7 +2035,8 @@ function handleSaleSubmit(e, isYJ) {
             qtyInput.value = "1";
             showToast("Vendita registrata!", "success");
         })
-        .catch(err => showToast("Errore: " + err.message, "error"));
+        .catch(err => showToast("Errore: " + err.message, "error"))
+        .finally(() => { _saleFormSubmitting = false; });
 }
 
 document.getElementById('sale-yj-form')?.addEventListener('submit', (e) => handleSaleSubmit(e, true));
@@ -2358,12 +2363,22 @@ function renderInventoryYjLogs() {
     const tbody = document.getElementById('inventory-yj-logs-table');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (localInventoryYJLogs.length === 0) {
+    // Dedup client-side per id (nessuna lettura extra Firestore)
+    const seen = new Set();
+    const logs = [];
+    for (let i = 0; i < localInventoryYJLogs.length; i++) {
+        const log = localInventoryYJLogs[i];
+        const id = log && log.id ? String(log.id) : '';
+        if (id && seen.has(id)) continue;
+        if (id) seen.add(id);
+        logs.push(log);
+    }
+    if (logs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
         return;
     }
     const canDelete = userRole === 'gestore';
-    localInventoryYJLogs.forEach(log => {
+    logs.forEach(log => {
         const isDeposit = log.action === 'deposita';
         const badge = isDeposit
             ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>`
@@ -2498,8 +2513,10 @@ window.deleteInventoryLog = function(logId, isYJ) {
     );
 };
 
+let _invYjTxSubmitting = false;
 document.getElementById('inventory-yj-transaction-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (_invYjTxSubmitting) return;
     const empId = document.getElementById('inv-yj-emp-select').value;
     const itemId = document.getElementById('inv-yj-item-select').value;
     const action = document.getElementById('inv-yj-action').value;
@@ -2514,6 +2531,7 @@ document.getElementById('inventory-yj-transaction-form')?.addEventListener('subm
         newQty -= qty;
     } else newQty += qty;
     const empName = localEmployees[empId]?.name || 'Dipendente';
+    _invYjTxSubmitting = true;
     const batch = db.batch();
     batch.update(db.collection('inventory_items').doc(itemId), { quantity: newQty });
     batch.set(db.collection('inventory_logs').doc(), {
@@ -2522,19 +2540,14 @@ document.getElementById('inventory-yj-transaction-form')?.addEventListener('subm
         action, quantity: qty, reason
     });
     batch.commit().then(() => {
+        // Solo qty ottimistica; il log arriva dal listener (niente unshift locale → no doppioni)
         if (localInventoryYJ[itemId]) localInventoryYJ[itemId].quantity = newQty;
-        localInventoryYJLogs.unshift({
-            id: 'local_' + Date.now(), timestamp: Date.now(),
-            dateString: new Date().toLocaleString('it-IT'),
-            employeeId: empId, employeeName: empName, itemId, itemName: item.name,
-            action, quantity: qty, reason
-        });
-        if (localInventoryYJLogs.length > 50) localInventoryYJLogs.pop();
         forceRefreshAfterWrite('inv_yj');
         e.target.reset();
         document.getElementById('inv-yj-qty').value = 1;
         showToast("Movimento YJ registrato!", "success");
-    }).catch(err => showToast(err.message, "error"));
+    }).catch(err => showToast(err.message, "error"))
+    .finally(() => { _invYjTxSubmitting = false; });
 });
 
 // --- INVENTARIO FENICI (analogo) ---
@@ -2595,12 +2608,22 @@ function renderInventoryFenLogs() {
     const tbody = document.getElementById('inventory-fen-logs-table');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (localInventoryFenLogs.length === 0) {
+    // Dedup client-side per id (nessuna lettura extra Firestore)
+    const seen = new Set();
+    const logs = [];
+    for (let i = 0; i < localInventoryFenLogs.length; i++) {
+        const log = localInventoryFenLogs[i];
+        const id = log && log.id ? String(log.id) : '';
+        if (id && seen.has(id)) continue;
+        if (id) seen.add(id);
+        logs.push(log);
+    }
+    if (logs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500 text-xs">Nessun movimento.</td></tr>`;
         return;
     }
     const canDelete = userRole === 'gestore';
-    localInventoryFenLogs.forEach(log => {
+    logs.forEach(log => {
         const isDeposit = log.action === 'deposita';
         const badge = isDeposit
             ? `<span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs font-bold">📥 Deposita</span>`
@@ -2657,8 +2680,10 @@ document.getElementById('inventory-fen-admin-form')?.addEventListener('submit', 
         .catch(err => showToast("Errore salvataggio: " + err.message, "error"));
 });
 
+let _invFenTxSubmitting = false;
 document.getElementById('inventory-fen-transaction-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (_invFenTxSubmitting) return;
     const empId = document.getElementById('inv-fen-emp-select').value;
     const itemId = document.getElementById('inv-fen-item-select').value;
     const action = document.getElementById('inv-fen-action').value;
@@ -2673,6 +2698,7 @@ document.getElementById('inventory-fen-transaction-form')?.addEventListener('sub
         newQty -= qty;
     } else newQty += qty;
     const empName = localEmployees[empId]?.name || 'Dipendente';
+    _invFenTxSubmitting = true;
     const batch = db.batch();
     batch.update(db.collection('fenici_items').doc(itemId), { quantity: newQty });
     batch.set(db.collection('fenici_logs').doc(), {
@@ -2681,19 +2707,14 @@ document.getElementById('inventory-fen-transaction-form')?.addEventListener('sub
         action, quantity: qty, reason
     });
     batch.commit().then(() => {
+        // Solo qty ottimistica; il log arriva dal listener (niente unshift locale → no doppioni)
         if (localInventoryFen[itemId]) localInventoryFen[itemId].quantity = newQty;
-        localInventoryFenLogs.unshift({
-            id: 'local_' + Date.now(), timestamp: Date.now(),
-            dateString: new Date().toLocaleString('it-IT'),
-            employeeId: empId, employeeName: empName, itemId, itemName: item.name,
-            action, quantity: qty, reason
-        });
-        if (localInventoryFenLogs.length > 50) localInventoryFenLogs.pop();
         forceRefreshAfterWrite('inv_fen');
         e.target.reset();
         document.getElementById('inv-fen-qty').value = 1;
         showToast("Movimento Fenici registrato!", "success");
-    }).catch(err => showToast(err.message, "error"));
+    }).catch(err => showToast(err.message, "error"))
+    .finally(() => { _invFenTxSubmitting = false; });
 });
 
 
@@ -3307,8 +3328,10 @@ window.deleteSaldoMovimento = function(id) {
     );
 };
 
+let _saldoManualSubmitting = false;
 document.getElementById('saldo-manual-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (_saldoManualSubmitting) return;
     if (userRole !== 'gestore') {
         showToast("Solo il gestore può modificare il saldo manualmente.", "error");
         return;
@@ -3332,11 +3355,13 @@ document.getElementById('saldo-manual-form')?.addEventListener('submit', (e) => 
         saleId: '',
         createdBy: 'gestore'
     };
+    _saldoManualSubmitting = true;
     db.collection('saldo_movimenti').add(payload)
         .then(() => {
             e.target.reset();
             showToast(isPrelievo ? "Prelievo registrato sul saldo." : "Aggiunta registrata sul saldo.", "success");
-            // Il listener onSnapshot aggiorna la lista una sola volta
+            // Il listener onSnapshot aggiorna la lista una sola volta (niente insert locale)
         })
-        .catch(err => showToast("Errore: " + err.message, "error"));
+        .catch(err => showToast("Errore: " + err.message, "error"))
+        .finally(() => { _saldoManualSubmitting = false; });
 });
